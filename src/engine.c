@@ -101,13 +101,12 @@ void initialize(context * ctx){
   ctx->size_loc = glGetUniformLocation(program, "size");
   ctx->tform_loc = glGetUniformLocation(program, "tform");
 
-  ctx->geom1_pts = 3;
+  ctx->geom1_pts = 5;
   float data[ctx->geom1_pts * 2];
   float ang = 2 * PI / (float)ctx->geom1_pts;
   for(int i = 0; i < ctx->geom1_pts; i++){
     data[i* 2] = sin(ang * i);
-    data[i *2 + 1] = cos(ang * i) ;
-
+    data[i *2 + 1] = cos(ang * i);
   }
    
   ctx->geom1 = gl_array_2d(data, 5);
@@ -181,7 +180,6 @@ void mainloop(context * ctx)
     is[i] = i;
   }
 
-  
   //qsort (x, sizeof(x)/sizeof(*x), sizeof(*x), comp);
   qsort2(is, n, sizeof(is[0]), compr, locs);
   
