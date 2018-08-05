@@ -8,6 +8,7 @@ typedef struct{
   int color_uniform_loc;
   int tform_loc;
   int size_loc;
+  int geom1_pts;
   int geom1;
 }context;
 

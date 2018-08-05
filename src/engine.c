@@ -9,6 +9,7 @@
 
 #include <iron/types.h>
 #include <iron/linmath.h>
+#include <iron/math.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -16,7 +17,6 @@
 
 #include "main.h"
 
-float pi = 3.14;
 
 typedef int (*q2cmp)(const void *, const void*, void * arg);
 
@@ -100,12 +100,13 @@ void initialize(context * ctx){
   ctx->color_uniform_loc = glGetUniformLocation(program, "color");
   ctx->size_loc = glGetUniformLocation(program, "size");
   ctx->tform_loc = glGetUniformLocation(program, "tform");
-  
-  float data[5 * 2];
-  float ang = 2 * 3.14 / 5.0;
-  for(int i = 0; i < 5; i++){
+
+  ctx->geom1_pts = 3;
+  float data[ctx->geom1_pts * 2];
+  float ang = 2 * PI / (float)ctx->geom1_pts;
+  for(int i = 0; i < ctx->geom1_pts; i++){
     data[i* 2] = sin(ang * i);
-    data[i *2 + 1] = cos(ang * i);
+    data[i *2 + 1] = cos(ang * i) ;
 
   }
    
@@ -130,7 +131,7 @@ void render(context * ctx, int i){
   glUniform1f(ctx->size_loc, loc);
   //glUniform4f(ctx->color_uniform_loc, i % 2, (i>>1) %2, (i>>2) % 2, 1);
   glUniform4f(ctx->color_uniform_loc, 1,cos(ctx->p + i) * 0.5 + 0.5, sin(ctx->q + i) * 0.5 + 0.5, 1);
-  glDrawArrays(GL_TRIANGLE_FAN, 0, 5);
+  glDrawArrays(GL_TRIANGLE_FAN, 0, ctx->geom1_pts);
   
 }
 
