@@ -10,6 +10,9 @@ typedef struct{
   int size_loc;
   int geom1_pts;
   int geom1;
+  void * alc_device;
+  void * alc_context;
+  unsigned int  source;
 }context;
 
 

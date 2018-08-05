@@ -13,6 +13,9 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <AL/al.h>
+#include <AL/alc.h>
+
 #include "flat_geom.c"
 
 #include "main.h"
@@ -35,8 +38,7 @@ int qsort2_cmp(const void * a, const void * b){
 void qsort2(void * base, size_t nmemb, size_t size, int (*compare)(const void *, const void*, void * arg), void * arg){
   qsort2_arg.cmp = compare;
   qsort2_arg.arg = arg;
-  qsort(base, nmemb, size, qsort2_cmp);
-  
+  qsort(base, nmemb, size, qsort2_cmp); 
 }
 
 i32 make_shader(u32 kind, char * source, u32 length){
@@ -83,7 +85,6 @@ u32 gl_array_2d(float * values, int n){
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, n * sizeof(values[0]) * n, values, GL_STATIC_DRAW);
   return vbo;
-
 }
 
 void initialize(context * ctx){
@@ -107,10 +108,42 @@ void initialize(context * ctx){
   for(int i = 0; i < ctx->geom1_pts; i++){
     data[i* 2] = sin(ang * i);
     data[i *2 + 1] = cos(ang * i) ;
-
   }
    
   ctx->geom1 = gl_array_2d(data, 5);
+  ALCdevice* device = alcOpenDevice(NULL);
+  ALCcontext* context = alcCreateContext(device, NULL);
+  ctx->alc_device = device;
+  ctx->alc_context = context;
+  alcMakeContextCurrent(context);
+  
+  ALfloat listenerPos[] = {0.0, 0.0, 1.0};
+  ALfloat listenerVel[] = {0.0, 0.0, 0.0};
+  ALfloat listenerOri[] = {0.0, 0.0, -1.0, 0.0, 1.0, 0.0};
+
+  alListenerfv(AL_POSITION, listenerPos);
+  alListenerfv(AL_VELOCITY, listenerVel);
+  alListenerfv(AL_ORIENTATION, listenerOri);
+
+  
+  ALuint buffers[1];
+
+  alGenBuffers(1, buffers);
+  int size = 200000;
+  unsigned char* buffer = (unsigned char*) malloc(size);
+  for(int i = 0; i < size; i++){
+    buffer[i] = (unsigned char)(200 * (sin(pow((float)i / 2.0, 0.75)) * 0.5 + 0.5));
+  }
+
+  ALenum format = AL_FORMAT_MONO8;
+  alBufferData(buffers[0], format, &buffer[0], size, 47000);
+
+  ALuint sources[1];
+  alGenSources(1, sources);
+  alSourcei(sources[0], AL_BUFFER, buffers[0]);
+  alSourcePlay(sources[0]);
+  ctx->source = sources[0];
+
 }
 
 static int n = 10;
@@ -180,7 +213,6 @@ void mainloop(context * ctx)
     locs[i] = get_loc(ctx, i);
     is[i] = i;
   }
-
   
   //qsort (x, sizeof(x)/sizeof(*x), sizeof(*x), comp);
   qsort2(is, n, sizeof(is[0]), compr, locs);
@@ -198,6 +230,10 @@ void mainloop(context * ctx)
   float damp = 1.0;//0.999;
   if(space){
     damp = 0.9;
+    int state;
+    alGetSourcei(ctx->source, AL_SOURCE_STATE, &state);
+    if(state == AL_STOPPED)
+      alSourcePlay(ctx->source);
   }
   ctx->pv *= damp;
   ctx->qv *= damp;

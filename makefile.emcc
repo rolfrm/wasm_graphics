@@ -5,7 +5,7 @@ CC = ~/bin/emcc
 TARGET = index.js
 OBJECTS =$(SOURCES:.c=.bc)
 LDFLAGS= --llvm-lto=3
-LIBS= -lglfw3 ../iron/libiron.bc
+LIBS= -lglfw3 -lopenal ../iron/libiron.bc
 CFLAGS = -std=c11 $(OPT) -Wall -Wextra -Werror=implicit-function-declaration -Wformat=0 -D_GNU_SOURCE  -fdiagnostics-color -s USE_GLFW=3 -s WASM=1 -I..
 all: $(TARGET)
 $(TARGET): $(OBJECTS)
