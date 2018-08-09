@@ -15,8 +15,10 @@
 
 int main(){
   glfwInit();
-
-  GLFWwindow * win = glfwCreateWindow(900, 900, "", NULL, NULL);
+  GLFWmonitor * monitor = glfwGetPrimaryMonitor();
+  const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+  
+  GLFWwindow * win = glfwCreateWindow(mode->width, mode->height, "", monitor, NULL);
   glfwMakeContextCurrent(win);
   glfwSwapInterval(1);  
   ASSERT(glewInit() == GLEW_OK);

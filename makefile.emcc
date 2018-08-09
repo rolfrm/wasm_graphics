@@ -9,7 +9,7 @@ LIBS= -lglfw3 -lopenal ../iron/libiron.bc
 CFLAGS = -std=c11 $(OPT) -Wall -Wextra -Werror=implicit-function-declaration -Wformat=0 -D_GNU_SOURCE  -fdiagnostics-color -s USE_GLFW=3 -s WASM=1 -I..
 all: $(TARGET)
 $(TARGET): $(OBJECTS)
-	   echo building $(OBJECTS)
+	echo building $(OBJECTS)
 	$(CC) $(CFLAGS)  $(OBJECTS) $(LIBS) -o $@
 
 %.bc: %.c $(HEADERS)
@@ -24,8 +24,6 @@ depend: h-depend
 clean:
 	rm $(OBJECTS) $(TARGET) src/*.bc.depends
 -include $(OBJECTS:.bc=.bc.depends)
-
-
 
 install: $(TARGET)
 	mkdir -v /usr/include/iron |true

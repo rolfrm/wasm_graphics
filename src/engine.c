@@ -20,7 +20,7 @@
 
 #include "main.h"
 
-
+void on_req_fullscreen();
 typedef int (*q2cmp)(const void *, const void*, void * arg);
 
 typedef struct {
@@ -193,6 +193,7 @@ void mainloop(context * ctx)
   int right = glfwGetKey(win, GLFW_KEY_RIGHT);
   int left = glfwGetKey(win, GLFW_KEY_LEFT);
   int space = glfwGetKey(win, GLFW_KEY_SPACE);
+  int f = glfwGetKey(win, GLFW_KEY_F);
   //int up = glfwGetKey(win, GLFW_KEY_UP);
   //  int down = glfwGetKey(win, GLFW_KEY_DOWN);
   //  
@@ -228,14 +229,18 @@ void mainloop(context * ctx)
   ctx->p += ctx->pv;
   ctx->q += ctx->qv;
   float damp = 1.0;//0.999;
-  if(space){
+  if(space || f){
     damp = 0.9;
     int state;
     alGetSourcei(ctx->source, AL_SOURCE_STATE, &state);
     if(state == AL_STOPPED)
       alSourcePlay(ctx->source);
+    
   }
   ctx->pv *= damp;
   ctx->qv *= damp;
-  
+
+  if(f ){
+    on_req_fullscreen();
+  }
 }
