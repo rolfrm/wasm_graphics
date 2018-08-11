@@ -17,29 +17,11 @@
 #include <AL/alc.h>
 
 #include "flat_geom.c"
-
+#include "squares.h"
+#include "squares.c"
 #include "main.h"
-
+#include "utils.h"
 void on_req_fullscreen();
-typedef int (*q2cmp)(const void *, const void*, void * arg);
-
-typedef struct {
-  q2cmp cmp;
-  void * arg;
-}qsort2_data;
-
-static __thread qsort2_data qsort2_arg;
-
-
-int qsort2_cmp(const void * a, const void * b){
-  return qsort2_arg.cmp(a,b,qsort2_arg.arg);
-}
-
-void qsort2(void * base, size_t nmemb, size_t size, int (*compare)(const void *, const void*, void * arg), void * arg){
-  qsort2_arg.cmp = compare;
-  qsort2_arg.arg = arg;
-  qsort(base, nmemb, size, qsort2_cmp); 
-}
 
 i32 make_shader(u32 kind, char * source, u32 length){
   i32 ref = glCreateShader(kind);
@@ -99,18 +81,30 @@ void initialize(context * ctx){
   glLinkProgram(program);
   ctx->geoshader = program;
   ctx->color_uniform_loc = glGetUniformLocation(program, "color");
-  ctx->size_loc = glGetUniformLocation(program, "size");
   ctx->tform_loc = glGetUniformLocation(program, "tform");
 
   ctx->geom1_pts = 3;
-  float data[ctx->geom1_pts * 2];
+  float data[100];
   float ang = 2 * PI / (float)ctx->geom1_pts;
   for(int i = 0; i < ctx->geom1_pts; i++){
-    data[i* 2] = sin(ang * i);
-    data[i *2 + 1] = cos(ang * i) ;
+    data[i* 2] = cos(ang * i );
+    data[i *2 + 1] = sin(ang * i) ;
   }
    
   ctx->geom1 = gl_array_2d(data, 5);
+
+  ang = 2 * PI / (float)4;
+  for(int i = 0; i < 4; i++){
+    data[i* 2] = sin(ang * i - PI / 4);
+    data[i *2 + 1] = cos(ang * i - PI / 4) ;
+  }
+  ctx->square = gl_array_2d(data, 5);
+
+  ctx->squares = squares_create(NULL);
+
+  squares_set(ctx->squares, 1, vec2_new(0,0), vec2_new(0.1, 0.1), 1);
+  squares_set(ctx->squares, 2, vec2_new(0,-0.5), vec2_new(0.5, 0.5), 2);
+  ctx->player_id = 1;
   ALCdevice* device = alcOpenDevice(NULL);
   ALCcontext* context = alcCreateContext(device, NULL);
   ctx->alc_device = device;
@@ -143,43 +137,24 @@ void initialize(context * ctx){
   alSourcei(sources[0], AL_BUFFER, buffers[0]);
   alSourcePlay(sources[0]);
   ctx->source = sources[0];
-
+  alSourcef (ctx->source, AL_GAIN, 0);
 }
 
-static int n = 10;
+void render_square(context * ctx, vec2 pos, vec2 size){
+  if(ctx->current_vbo != ctx->square){
+    glBindBuffer(GL_ARRAY_BUFFER, ctx->square);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), 0);
+    glEnableVertexAttribArray(0);
+    ctx->current_vbo = ctx->square;
+    ctx->vbo_points = 4;
+  }
 
-float get_loc(context * ctx,int i){
-  float l = (float)i / ((float)(n - 4));
-  float loc = ctx->p*0.1 + l;
-  loc = fmod(loc, 1.5);
-  loc = pow(loc, 2);
-    return loc; 
-}
+  mat3 m1 = mat3_2d_translation(pos.x, pos.y);
+  mat3 m2 = mat3_2d_scale(size.x, size.y);
+  mat3 m3 = mat3_mul(ctx->world_tform, mat3_mul(m1, m2));
 
-
-void render(context * ctx, int i){
-  float loc = get_loc(ctx,i);
-  mat3 rot = mat3_2d_rotation(loc + ctx->q);
-  glUniformMatrix3fv(ctx->tform_loc, 1, false, &rot.data[0][0]);
-  glUniform1f(ctx->size_loc, loc);
-  //glUniform4f(ctx->color_uniform_loc, i % 2, (i>>1) %2, (i>>2) % 2, 1);
-  glUniform4f(ctx->color_uniform_loc, 1,cos(ctx->p + i) * 0.5 + 0.5, sin(ctx->q + i) * 0.5 + 0.5, 1);
-  glDrawArrays(GL_TRIANGLE_FAN, 0, ctx->geom1_pts);
-  
-}
-
-int compr(const void * a, const void * b, void * c){
-  int ia = *((int*)a);
-  int ib = *((int*)b);
-  float * f = c;
-  float fa = f[ia];
-  float fb = f[ib];
-  if (fa > fb)
-    return 1;
-  
-  if(fb > fa)
-    return -1;
-  return 0;
+  glUniformMatrix3fv(ctx->tform_loc, 1, false, &m3.data[0][0]);
+  glDrawArrays(GL_TRIANGLE_FAN, 0, ctx->vbo_points);
 }
 
 void mainloop(context * ctx)
@@ -187,60 +162,31 @@ void mainloop(context * ctx)
   if(!ctx->initialized)
     initialize(ctx);
   glUseProgram(ctx->geoshader);
+  float rotation = 0;
+  ctx->world_tform = mat3_mul(mat3_2d_rotation(rotation), mat3_2d_scale(0.3,0.3));
+  
+  glUniform4f(ctx->color_uniform_loc, 1,1,1,1);
   GLFWwindow * win = ctx->win;
-  int up = glfwGetKey(win, GLFW_KEY_UP);
-  int down = glfwGetKey(win, GLFW_KEY_DOWN);
-  int right = glfwGetKey(win, GLFW_KEY_RIGHT);
-  int left = glfwGetKey(win, GLFW_KEY_LEFT);
-  int space = glfwGetKey(win, GLFW_KEY_SPACE);
   int f = glfwGetKey(win, GLFW_KEY_F);
-  //int up = glfwGetKey(win, GLFW_KEY_UP);
-  //  int down = glfwGetKey(win, GLFW_KEY_DOWN);
-  //  
-  //  
-  //  int w = glfwGetKey(win, GLFW_KEY_W);
-  //  int s = glfwGetKey(win, GLFW_KEY_S);
   
   glClearColor(0,0,0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
-
-  glBindBuffer(GL_ARRAY_BUFFER, ctx->geom1);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), 0);
-  glEnableVertexAttribArray(0);
-
-  float locs[n];
-  int is[n];
-  for(int i = 0; i < n; i++){
-    locs[i] = get_loc(ctx, i);
-    is[i] = i;
+  for(size_t i = 0 ; i < ctx->squares->count; i++){
+    render_square(ctx, ctx->squares->pos[i+1],ctx->squares->size[i+1]);
   }
   
-  //qsort (x, sizeof(x)/sizeof(*x), sizeof(*x), comp);
-  qsort2(is, n, sizeof(is[0]), compr, locs);
   
-  for(int i = n -1 ; i > 0; i--){
-    render(ctx,is[i]);
-  }
   
   glfwSwapBuffers(ctx->win);
   glfwPollEvents();
-  ctx->pv += (up - down) * 0.01;
-  ctx->qv += (left - right) * 0.005;
-  ctx->p += ctx->pv;
-  ctx->q += ctx->qv;
-  float damp = 1.0;//0.999;
-  if(space || f){
-    damp = 0.9;
-    int state;
-    alGetSourcei(ctx->source, AL_SOURCE_STATE, &state);
-    if(state == AL_STOPPED)
-      alSourcePlay(ctx->source);
-    
-  }
-  ctx->pv *= damp;
-  ctx->qv *= damp;
-
   if(f ){
     on_req_fullscreen();
   }
+
+  size_t idx = 0;
+  squares_lookup(ctx->squares, &ctx->player_id, &idx, 1);
+  //ASSERT(idx);
+  ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_new(0.01, 0.01));
+
+  
 }

@@ -9,8 +9,9 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-
+#include <iron/linmath.h>
 #define ASSERT(x) if(x){}
+#include "squares.h"
 #include "main.h"
 
 void on_req_fullscreen(){
@@ -21,10 +22,10 @@ void on_req_fullscreen(){
 
 int main(){
   glfwInit();
-  GLFWmonitor * monitor = glfwGetPrimaryMonitor();
-  const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+  //GLFWmonitor * monitor = glfwGetPrimaryMonitor();
+  //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
   
-  GLFWwindow * win = glfwCreateWindow(mode->width, mode->height, "", monitor, NULL);
+  GLFWwindow * win = glfwCreateWindow(512, 512, "", NULL, NULL);
   glfwMakeContextCurrent(win);
   glfwSwapInterval(1);  
   ASSERT(glewInit() == GLEW_OK);
