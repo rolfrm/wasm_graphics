@@ -1,7 +1,7 @@
 OPT = -O3
 SRCFILES = main_emcc.c engine.c
 SOURCES = $(addprefix src/, $(SRCFILES))
-CC = ~/bin/emcc
+CC = emcc
 TARGET = index.js
 OBJECTS =$(SOURCES:.c=.bc)
 LDFLAGS= --llvm-lto=3

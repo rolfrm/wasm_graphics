@@ -13,6 +13,12 @@
 #define ASSERT(x) if(x){}
 #include "main.h"
 
+void on_req_fullscreen(){
+  //
+  
+}
+
+
 int main(){
   glfwInit();
   GLFWmonitor * monitor = glfwGetPrimaryMonitor();

@@ -16,6 +16,7 @@ all: $(ALL)
 
 .c.o: $(HEADERS)
 	$(CC) $(CFLAGS) $< -o $@ -MMD -MF $@.depends
+src/engine.o: src/flat_geom.c
 src/flat_geom.c: src/flat_geom.vs src/flat_geom.fs
 	echo building shader!
 	xxd -i src/flat_geom.vs > src/flat_geom.c
