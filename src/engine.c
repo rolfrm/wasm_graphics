@@ -299,8 +299,9 @@ void mainloop(context * ctx)
     // fix player unless jumping.
     vec2 dist = square_distance(ctx->squares->pos[idx2],ctx->squares->pos[idx],ctx->squares->size[idx2],ctx->squares->size[idx]);
     printf("Fixit?..\n");
-    if(MIN(dist.x, dist.y) < -0.0000){
-      
+    vec2_print(dist);logd("\n");
+    if(MIN(dist.x, dist.y) < -0.00001){
+      printf("yes..\n");
       vec2 p2 = ctx->squares->pos[idx2];
       vec2 p1 = ctx->squares->pos[idx];
       vec2 d3 = vec2_sub(p2, p1);
@@ -315,8 +316,8 @@ void mainloop(context * ctx)
       
       vec2 mov = vec2_scale(vec2_mul(dist, perp), -1);
       logd("move: ");vec2_print(mov);logd("\n");
-      if(vec2_len(mov) > 0.00001){    
-	ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(mov, 1));
+      if(vec2_len(mov) > 0.000){    
+	ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(mov, 0.25));
       }
     }
       
@@ -328,12 +329,16 @@ void mainloop(context * ctx)
     printf("Leave orbit?.. %f\n", d);
     if(d > 0.001){ // going to orbit!!
       vec2 d_to_square = vec2_sub(ctx->squares->pos[idx2],ctx->squares->pos[idx]);
+      
       vec2 d_to_square_n = vec2_normalize(d_to_square);
-      ctx->player_current_direction = vec2_normalize(vec2_add(vec2_scale(d_to_square_n, ctx->player_gravity), ctx->player_current_direction));
+
+      vec2 newd = vec2_normalize(vec2_add(vec2_scale(d_to_square_n, ctx->player_gravity), ctx->player_current_direction));
+      if(!isnan(newd.x) && !isnan(newd.y))
+	ctx->player_current_direction = newd;
 
       ctx->player_stick = false;
     }else{
-      ctx->player_stick = true;
+      //ctx->player_stick = true;
     }
     
   }
@@ -352,7 +357,7 @@ void mainloop(context * ctx)
 	mindist = d;
 	minid = ctx->squares->id[i];
       }
-      if(d < -0.000){
+      if(d < -0.0001){
 	if(type == SQUARE_WIN || type == SQUARE_LOSE){
 	  load_level(ctx, ctx->current_level + (type == SQUARE_WIN ? 1 : 0)); return;
 	}else if(type == SQUARE_BLOCK){
@@ -362,6 +367,7 @@ void mainloop(context * ctx)
 	  }else{
 	    ctx->player_current_direction.x = 0;
 	  }
+	  
 	  if(vec2_len(ctx->player_current_direction) < 0.0001){
 	    if(dist.x < dist.y){
 	    // collided top/bottom.
