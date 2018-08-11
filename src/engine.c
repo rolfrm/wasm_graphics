@@ -71,10 +71,50 @@ u32 gl_array_2d(float * values, int n){
   return vbo;
 }
 
-void load_level2(context * ctx){
-  squares_clear(ctx->squares);
-  squares_set(ctx->squares, 1, vec2_new(0,1), vec2_new(0.1, 0.1), SQUARE_PLAYER);
+void load_level4(context * ctx){
+  squares_set(ctx->squares, 1, vec2_new(0,1.05), vec2_new(0.1, 0.1), SQUARE_PLAYER); 
 
+  squares_set(ctx->squares, 2, vec2_new(0.5,0), vec2_new(1, 1), SQUARE_BLOCK);
+
+  squares_set(ctx->squares, 10, vec2_new(1.75 ,1.00), vec2_new(0.25, 0.25), SQUARE_LOSE);
+
+  squares_set(ctx->squares, 3, vec2_new(2,2.8), vec2_new(1, 1), SQUARE_BLOCK);
+  squares_set(ctx->squares, 4, vec2_new(4,0), vec2_new(1, 1), SQUARE_BLOCK);
+  squares_set(ctx->squares, 11, vec2_new(3.6 ,0.95), vec2_new(0.5, 0.1), SQUARE_LOSE);
+  squares_set(ctx->squares, 21, vec2_new(3.6 ,0.98), vec2_new(0.2, 0.1), SQUARE_WIN);  
+  ctx->player_id = 1;
+  ctx->player_current_square = 2;
+  ctx->player_current_direction = vec2_new(0.1,0);
+  ctx->player_stick = true;
+  ctx->player_gravity = 1;    
+}
+
+void load_level3(context * ctx){
+  squares_set(ctx->squares, 1, vec2_new(0,1.05), vec2_new(0.1, 0.1), SQUARE_PLAYER); 
+  
+  squares_set(ctx->squares, 2, vec2_new(0,0), vec2_new(1, 1), SQUARE_BLOCK);
+  for(int i = 0; i < 3; i++){
+    squares_set(ctx->squares, 3 + i, vec2_new(2.5 + i * 2.5,0), vec2_new(1, 1), SQUARE_BLOCK);
+    squares_set(ctx->squares, 10 + i, vec2_new(1.25 + i * 2.5,0), vec2_new(0.5, 0.5), SQUARE_LOSE);
+  }
+  for(int i = 0; i < 3; i++){
+    squares_set(ctx->squares, 3 + i + 3, vec2_new(-2.5 - i * 2.5,0), vec2_new(1, 1), SQUARE_BLOCK);
+    squares_set(ctx->squares, 10 + i + 3, vec2_new(-1.25 - i * 2.5,0), vec2_new(0.5, 0.5), SQUARE_LOSE);
+  }
+  squares_set(ctx->squares, 20, vec2_new(1.25,-1.0), vec2_new(0.25, 0.25), SQUARE_WIN);
+
+  
+  ctx->player_id = 1;
+  ctx->player_current_square = 2;
+  ctx->player_current_direction = vec2_new(0.1,0);
+  ctx->player_stick = true;
+  ctx->player_gravity = 1;  
+
+}
+
+void load_level2(context * ctx){
+  squares_set(ctx->squares, 1, vec2_new(0,1), vec2_new(0.1, 0.1), SQUARE_PLAYER);
+  
   squares_set(ctx->squares, 2, vec2_new(0,0), vec2_new(0.5, 0.5), SQUARE_BLOCK);
   squares_set(ctx->squares, 3, vec2_new(0,1.5), vec2_new(0.5, 0.5), SQUARE_BLOCK);
   squares_set(ctx->squares, 4, vec2_new(-1.5,0.0), vec2_new(0.5, 0.5), SQUARE_BLOCK);
@@ -106,21 +146,22 @@ void load_level1(context * ctx){
   squares_set(ctx->squares, 40, vec2_new(9,1), vec2_new(0.5, 0.5), SQUARE_WIN);
   ctx->player_id = 1;
   ctx->player_current_square = 2;
-  ctx->player_current_direction = vec2_new(1,0);
+  ctx->player_current_direction = vec2_new(0.1,0);
   ctx->player_stick = true;
   ctx->player_gravity = 1;
   
 }
 
 void load_level0(context * ctx){
+
   squares_clear(ctx->squares);
-  squares_set(ctx->squares, 1, vec2_new(-95,2), vec2_new(0.1, 0.1), SQUARE_PLAYER);
+  squares_set(ctx->squares, 1, vec2_new(90,2), vec2_new(0.1, 0.1), SQUARE_PLAYER);
   squares_set(ctx->squares, 2, vec2_new(0,0), vec2_new(100, 1), SQUARE_BLOCK);
   
   
   //squares_set(ctx->squares, 30, vec2_new(2,2.5), vec2_new(1, 1), SQUARE_LOSE);
   
-  squares_set(ctx->squares, 40, vec2_new(9,1), vec2_new(0.5, 0.5), SQUARE_WIN);
+  squares_set(ctx->squares, 30, vec2_new(95,1.6), vec2_new(0.5, 0.5), SQUARE_WIN);
   for(int i = 0; i < 20; i++)
     squares_set(ctx->squares, 40 + i, vec2_new(-100 + i * 5,3), vec2_new(0.5, 0.5), SQUARE_WIN);
       
@@ -139,13 +180,19 @@ void load_level(context * ctx, int n){
   ctx->current_level = n;
   ctx->game_time = 0.0;
   ctx->player_stick = true;
+  squares_clear(ctx->squares);
+  
   if(n == 0){
     load_level0(ctx);
   }else if(n == 1){
     load_level1(ctx);
   }
   else if(n == 2){
-    load_level2(ctx);      
+    load_level2(ctx);
+  }else if(n == 3){
+    load_level3(ctx);
+  }else if(n == 4){
+    load_level4(ctx);
   }else{
     printf("Game won: %i\n", n);
     exit(0);
@@ -191,7 +238,7 @@ void initialize(context * ctx){
 
   ctx->squares = squares_create(NULL);
 
-  load_level(ctx, 1);
+  load_level(ctx, 0);
   ALCdevice* device = alcOpenDevice(NULL);
   ALCcontext* context = alcCreateContext(device, NULL);
   ctx->alc_device = device;
@@ -277,9 +324,9 @@ void mainloop(context * ctx)
   glClear(GL_COLOR_BUFFER_BIT);
   for(size_t i = 0 ; i < ctx->squares->count; i++){
     square_type type = ctx->squares->type[i+1];
-    if( type == SQUARE_WIN){
+    if( type == SQUARE_LOSE){
       glUniform4f(ctx->color_uniform_loc, 1,0,0,1);
-    }else if(type == SQUARE_LOSE){
+    }else if(type == SQUARE_WIN){
       glUniform4f(ctx->color_uniform_loc, 0,1,0,1);
     }
     render_square(ctx, ctx->squares->pos[i+1],ctx->squares->size[i+1]);
@@ -326,33 +373,59 @@ void mainloop(context * ctx)
     vec2 dist = square_distance(ctx->squares->pos[idx2],ctx->squares->pos[idx],ctx->squares->size[idx2],ctx->squares->size[idx]);
 
     float d = MAX(dist.x, dist.y);
-    printf("Leave orbit?.. %f\n", d);
-    if(d > 0.001){ // going to orbit!!
-      vec2 d_to_square = vec2_sub(ctx->squares->pos[idx2],ctx->squares->pos[idx]);
-      
-      vec2 d_to_square_n = vec2_normalize(d_to_square);
-
-      vec2 newd = vec2_normalize(vec2_add(vec2_scale(d_to_square_n, ctx->player_gravity), ctx->player_current_direction));
-      if(!isnan(newd.x) && !isnan(newd.y))
-	ctx->player_current_direction = newd;
-
-      ctx->player_stick = false;
-    }else{
-      //ctx->player_stick = true;
+    vec2 s1 = ctx->squares->size[idx];
+    
+    printf("Leave orbit?.. %f %f %f %f %f\n", d, dist.x, dist.y, s1.x, s1.y);
+    vec2 p2 = ctx->squares->pos[idx2];
+    vec2 p1 = ctx->squares->pos[idx];
+    vec2 dd = vec2_sub(p2, p1);
+    if(dist.y > -s1.y && !ctx->player_stick ){
+      // no vertical collision
+      printf(">> %f\n", SIGN(dd.y) * ctx->player_gravity * 0.5);
+      ctx->player_current_direction.y += SIGN(dd.y) * ctx->player_gravity * 0.5;
     }
     
+    if(dist.x > -s1.x && !ctx->player_stick){
+      printf(">>>> %f\n", SIGN(dd.x) * ctx->player_gravity * 0.5);
+      // no vertical collision
+      ctx->player_current_direction.x += SIGN(dd.x) * ctx->player_gravity * 0.5;
+    }
+    //float l = vec2_len(ctx->player_current_direction);
+    //if(l < 1)
+    //ctx->player_current_direction = vec2_scale(ctx->player_current_direction, 1.0 / l );
+    //ctx->player_current_direction = vec2_normalize(ctx->player_current_direction);
+    if(d > 0.000){ // going to orbit!!
+      ctx->player_stick = false;
+    }else{
+      ctx->player_stick = true;
+    }
+    
+  }
+  float l = vec2_len(ctx->player_current_direction);
+  if(l < 1 && ctx->player_stick){
+    printf("accelerate..\n");
+    ctx->player_current_direction = vec2_scale(ctx->player_current_direction, 1.1 );
+  }
+  if( l > 1){
+    ctx->player_current_direction = vec2_scale(ctx->player_current_direction, 0.9 );
   }
 
   float mindist = 10000;
   int minid = -1;
   
   for(size_t _i = 0 ; _i < ctx->squares->count; _i++){
-    size_t i = _i + 1;
+    size_t i = ctx->squares->count - _i;
     square_type type = ctx->squares->type[i];
     if(ctx->squares->type[i] != SQUARE_PLAYER){
       size_t idx2 = i;
       vec2 dist = square_distance(ctx->squares->pos[idx2],ctx->squares->pos[idx],ctx->squares->size[idx2],ctx->squares->size[idx]);
-      float d = MAX(dist.x, dist.y);
+      //float d = MAX(dist.x, dist.y);
+      float d = dist.x;
+      if(d < 0){
+	d = dist.y;
+      }else if(dist.y > 0){
+	d = sqrt(d * d + dist.y * dist.y) ;
+      }
       if(d < mindist && type == SQUARE_BLOCK){
 	mindist = d;
 	minid = ctx->squares->id[i];
@@ -371,12 +444,12 @@ void mainloop(context * ctx)
 	  if(vec2_len(ctx->player_current_direction) < 0.0001){
 	    if(dist.x < dist.y){
 	    // collided top/bottom.
-	      ctx->player_current_direction.x = 1;
+	      //ctx->player_current_direction.x = 1;
 	    }else{
-	      ctx->player_current_direction.y = 1;
+	      //ctx->player_current_direction.y = 1;
 	    }
 	  }
-	  ctx->player_current_direction = vec2_normalize(ctx->player_current_direction);
+	  //ctx->player_current_direction = vec2_normalize(ctx->player_current_direction);
 	  ctx->player_gravity = 1;
 	  ctx->player_stick = true;
 	}
@@ -398,7 +471,7 @@ void mainloop(context * ctx)
       mat2 rot = mat2_rotation(ang * PI/4);
       vec2 jmp = mat2_mul_vec2(rot, ctx->player_current_direction);
       ctx->player_current_direction = jmp;
-      ctx->player_gravity = 0.1;
+      ctx->player_gravity = 0.05;
       ctx->player_stick = false;
       ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.03));
       ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.03));
@@ -409,7 +482,7 @@ void mainloop(context * ctx)
 
   
   ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.06));
-  printf("Player: ");vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
+  printf("Player: %i",ctx->player_stick); vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
   ctx->jmpcnt--;
 
   ctx->game_time += 0.01;
