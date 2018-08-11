@@ -29,8 +29,23 @@ typedef struct{
   int player_id;
   int player_current_square;
   vec2 player_current_direction;
+  vec2 player_gravity_dir;
   bool player_stick;
+  float player_gravity;
+  int jmpcnt;
+
+  int current_level;
+
+  float game_time;
 }context;
+
+typedef enum {
+  SQUARE_BLOCK,
+  SQUARE_PLAYER = 1,
+  SQUARE_WIN,
+  SQUARE_LOSE
+
+}square_type_id;
 
 
 void mainloop(context * ctx);

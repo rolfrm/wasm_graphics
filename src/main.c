@@ -10,6 +10,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <iron/linmath.h>
+#include <iron/types.h>
+#include <iron/time.h>
 #define ASSERT(x) if(x){}
 #include "squares.h"
 #include "main.h"
@@ -32,6 +34,7 @@ int main(){
   context ctx = {.win = win};
 
   while(glfwWindowShouldClose(ctx.win) == false){
+    //iron_usleep(100000);
     mainloop(&ctx);
   }
     
