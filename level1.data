@@ -1,0 +1,17 @@
+//
+0.5 3.05 0.1 0.1 PLAYER
+0.5 2.0 0.5 0.5 BLOCK
+0.5 0 1 1 BLOCK
+-2 0 1.5 0.5 LOSE
+2.5 0 1 0.5 LOSE
+-5.4 0 0.25 0.25 LOSE	
+-2.2 2 0.5 1 BLOCK
+-4.5 0 1 1 BLOCK
+3.0 -1.5 1 1 WIN
+-2.4 -2 0.5 1 BLOCK
+ -1.0  -2 0.5 0.5 BLOCK
+//7.5 0 1 1 BLOCK
+//
+
+current_square: 2
+current_direction: 0.1 0.0

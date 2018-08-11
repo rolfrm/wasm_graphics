@@ -17,12 +17,16 @@
 
 #include <AL/al.h>
 #include <AL/alc.h>
+#include <unistd.h>
+#include <utime.h>
+#include <sys/stat.h>
 
 #include "flat_geom.c"
 #include "squares.h"
 #include "squares.c"
 #include "main.h"
 #include "utils.h"
+
 void on_req_fullscreen();
 
 i32 make_shader(u32 kind, char * source, u32 length){
@@ -69,6 +73,86 @@ u32 gl_array_2d(float * values, int n){
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, n * sizeof(values[0]) * n, values, GL_STATIC_DRAW);
   return vbo;
+}
+
+// get the time in microseconds, because nanoseconds is probably too accurate.
+u64 get_file_time(const struct stat * stati){
+  return stati->st_mtime;
+}
+
+u64 get_file_time2(const char * path){
+  struct stat st;
+  stat(path, &st);
+  return st.st_mtime * 1000000;
+}
+
+
+FILE *popen(const char *command, const char *mode);
+int pclose(FILE *stream);
+
+void load_level_file(context * ctx, const char * file){
+  UNUSED(ctx);
+  FILE *cmd;
+  char result[1024];
+
+  char scmd[1025];
+  sprintf(scmd, "cat %s", file);
+  u64 stamp = get_file_time2(file);
+  bool reload = false;
+  if(ctx->file == file && stamp == ctx->file_modify){
+    return;
+  }else if(ctx->file != NULL){
+    reload = true;
+  }
+  ctx->file = file;
+  ctx->file_modify = stamp;
+  cmd = popen(scmd, "r");
+  if (cmd == NULL) {
+    perror("popen");
+    exit(EXIT_FAILURE);
+  }
+  ctx->player_id = 1;
+  ctx->player_current_square = 2;
+  if(!reload)
+    ctx->player_current_direction = vec2_new(0.1,0);
+  ctx->player_stick = true;
+  ctx->player_gravity = 1;
+  
+  int id = 1;
+  while (fgets(result, sizeof(result), cmd)) {
+    float x,y,w,h;
+    char name[124];
+    if(strstr(result, "//") != NULL) continue;
+    int r = sscanf(result, "%f %f %f %f %s\n", &x, &y, &w, &h, &name);
+    int current_square;
+    if(r == 5){
+      printf("%i, %f %f %f %f '%s'\n", r, x,y,w,h, name);
+      int type = -1;
+      if(strcmp(name, "BLOCK") == 0){
+	type = SQUARE_BLOCK;
+      }else if (strcmp(name, "PLAYER") == 0){
+	type = SQUARE_PLAYER;
+      }else if (strcmp(name, "WIN") == 0){
+	type = SQUARE_WIN;
+      }else if (strcmp(name, "LOSE") == 0){
+	type = SQUARE_LOSE;
+      }
+      ASSERT(type != -1);
+      if(!(type == SQUARE_PLAYER && reload))
+	squares_set(ctx->squares, id, vec2_new(x,y), vec2_new(w, h), type); 
+      id += 1;
+      
+    }else if(sscanf(result, "current_square: %i", &current_square) == 1){
+      if(!reload)
+	ctx->player_current_square = current_square;
+    }else if(sscanf(result, "current_direction: %f %f", &x, &y) == 2){
+      if(!reload)
+	ctx->player_current_direction = vec2_new(x,y);
+    }
+
+  }
+  //exit(0);
+
 }
 
 void load_level4(context * ctx){
@@ -193,6 +277,8 @@ void load_level(context * ctx, int n){
     load_level3(ctx);
   }else if(n == 4){
     load_level4(ctx);
+  }else if(n == 5){
+    load_level_file(ctx,"level1.data");
   }else{
     printf("Game won: %i\n", n);
     exit(0);
@@ -238,7 +324,7 @@ void initialize(context * ctx){
 
   ctx->squares = squares_create(NULL);
 
-  load_level(ctx, 0);
+  load_level(ctx, 5);
   ALCdevice* device = alcOpenDevice(NULL);
   ALCcontext* context = alcCreateContext(device, NULL);
   ctx->alc_device = device;
@@ -314,7 +400,7 @@ void mainloop(context * ctx)
   float rot = ((int)(ctx->game_time * 0.5)) * PI / 2.0;
   rot = 0;
   glUseProgram(ctx->geoshader);
-  ctx->world_tform = mat3_mul(mat3_2d_rotation(rot), mat3_mul( mat3_2d_scale(0.4,0.4), mat3_2d_translation(-ctx->squares->pos[idx].x,-ctx->squares->pos[idx].y)));
+  ctx->world_tform = mat3_mul(mat3_2d_rotation(rot), mat3_mul( mat3_2d_scale(0.2,0.2), mat3_2d_translation(-ctx->squares->pos[idx].x,-ctx->squares->pos[idx].y)));
   
   glUniform4f(ctx->color_uniform_loc, 1,1,1,1);
   GLFWwindow * win = ctx->win;
@@ -328,6 +414,8 @@ void mainloop(context * ctx)
       glUniform4f(ctx->color_uniform_loc, 1,0,0,1);
     }else if(type == SQUARE_WIN){
       glUniform4f(ctx->color_uniform_loc, 0,1,0,1);
+    }else{
+      glUniform4f(ctx->color_uniform_loc, 1,1,1,1);
     }
     render_square(ctx, ctx->squares->pos[i+1],ctx->squares->size[i+1]);
   }
@@ -432,6 +520,7 @@ void mainloop(context * ctx)
       }
       if(d < -0.0001){
 	if(type == SQUARE_WIN || type == SQUARE_LOSE){
+	  ctx->file = NULL;
 	  load_level(ctx, ctx->current_level + (type == SQUARE_WIN ? 1 : 0)); return;
 	}else if(type == SQUARE_BLOCK){
 	  if(dist.x < dist.y){
@@ -486,7 +575,8 @@ void mainloop(context * ctx)
   ctx->jmpcnt--;
 
   ctx->game_time += 0.01;
-  
+  if(ctx->file != NULL)
+    load_level_file(ctx,ctx->file);
   //ctx->q += 0.001;
   
 }

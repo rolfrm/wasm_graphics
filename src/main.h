@@ -37,6 +37,10 @@ typedef struct{
   int current_level;
 
   float game_time;
+
+  const char * file;
+  u64 file_modify;
+  
 }context;
 
 typedef enum {
