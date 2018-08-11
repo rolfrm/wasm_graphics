@@ -28,7 +28,8 @@ typedef struct{
 
   int player_id;
   int player_current_square;
-  
+  vec2 player_current_direction;
+  bool player_stick;
 }context;
 
 
