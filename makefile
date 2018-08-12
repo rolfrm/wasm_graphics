@@ -1,5 +1,5 @@
 OPT = -g3 -Og
-LIB_SOURCES1 =  main.c engine.c utils.c 
+LIB_SOURCES1 =  main.c engine.c utils.c audio.c
 LIB_SOURCES = $(addprefix src/, $(LIB_SOURCES1))
 CC = gcc
 TARGET = run.exe

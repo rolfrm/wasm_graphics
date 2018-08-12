@@ -28,7 +28,7 @@ typedef struct{
   
   void * alc_device;
   void * alc_context;
-  unsigned int  source;
+  unsigned int  _source;
 
   squares * squares;
   
@@ -54,7 +54,11 @@ typedef struct{
 
   particles * particles;
   int particle_counter;
-  starry stars; 
+  starry stars;
+
+  u32 jmp_sound;
+  u32 win_sound;
+  u32 lose_sound;
 }context;
 
 

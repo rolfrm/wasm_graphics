@@ -29,7 +29,7 @@
 #include "particles.c"
 #include "main.h"
 #include "utils.h"
-
+#include "audio.h"
 
 void on_req_fullscreen();
 
@@ -293,6 +293,39 @@ void load_level(context * ctx, int n){
 
 }
 
+u32 create_sound(short * samples, int count){
+  ALuint buffers[1];
+  alGenBuffers(1, buffers);
+  
+  ALenum format = AL_FORMAT_MONO16;
+  alBufferData(buffers[0], format, samples, count, 47000);
+
+  ALuint sources[1];
+  alGenSources(1, sources);
+  alSourcei(sources[0], AL_BUFFER, buffers[0]);
+  return sources[0];
+
+}
+
+
+u32 create_soundf(float * samples, int count){
+  ALuint buffers[1];
+  alGenBuffers(1, buffers);
+  
+  ALenum format = AL_FORMAT_MONO16;
+  short * data = malloc(count * sizeof(short));
+  for(int i = 0; i < count; i++)
+    data[i] = samples[i] * 32000.0;
+  alBufferData(buffers[0], format, data, count, 47000);
+  free(data);
+  ALuint sources[1];
+  alGenSources(1, sources);
+  alSourcei(sources[0], AL_BUFFER, buffers[0]);
+  return sources[0];
+
+}
+
+
 u32 load_shader_program(const char * vscode, int vslen, const char * fscode, int fslen){
   GLuint vs = make_shader(GL_VERTEX_SHADER, (char *) vscode, vslen);
   GLuint fs = make_shader(GL_FRAGMENT_SHADER, (char *) fscode, fslen);
@@ -304,6 +337,7 @@ u32 load_shader_program(const char * vscode, int vslen, const char * fscode, int
   glLinkProgram(program);
   return program;
 }
+
 
 void run_test();
 void initialize(context * ctx){
@@ -356,24 +390,46 @@ void initialize(context * ctx){
   alListenerfv(AL_ORIENTATION, listenerOri);
 
   
-  ALuint buffers[1];
-
-  alGenBuffers(1, buffers);
-  int size = 200000;
-  unsigned char* buffer = (unsigned char*) malloc(size);
+  int size = 4000;
+  float * buffer = malloc(size * sizeof(float));
   for(int i = 0; i < size; i++){
-    buffer[i] = (unsigned char)(200 * (sin(pow((float)i / 2.0, 0.75)) * 0.5 + 0.5));
+    buffer[i] = sin(pow(i * 0.02,2.0) * 0.1) * 0.5 + sin(pow(i * 0.03,2.0) * 0.2) * 0.5;
   }
 
-  ALenum format = AL_FORMAT_MONO8;
-  alBufferData(buffers[0], format, &buffer[0], size, 47000);
-
-  ALuint sources[1];
-  alGenSources(1, sources);
-  alSourcei(sources[0], AL_BUFFER, buffers[0]);
-  alSourcePlay(sources[0]);
-  ctx->source = sources[0];
-  alSourcef (ctx->source, AL_GAIN, 0);
+  
+  ctx->jmp_sound = create_soundf(buffer, size);
+  free(buffer);
+  size = 20000;
+  buffer= malloc(size * sizeof(float));
+  for(int i = 0; i < size; i++){
+    buffer[i] = sin(i / 3.0) * sin(i / 10.0 * 1.0 * (0.9 + 0.1 * cos(i / 200.0))) ;
+    buffer[i] *= (i > 10000 ? (i - 10000)/10000.0: 1);
+    buffer[i] *= (i < 2000 ? i/2000.0: 1);
+  }
+  
+  ctx->lose_sound = create_soundf(buffer, size);
+  free(buffer);
+  size = 30000;
+  buffer= calloc(size * sizeof(float), 1);
+  var sine = create_sine(440);
+  var env = create_adsr(0.1, 0.2, 0.4, 0.1);
+  env->sub = sine;
+  for(int i = 0; i < size; i++){
+    //buffer[i] = sin(pow(i * 0.01, 2.0) * 0.1);
+    env->f(buffer, i, env);
+    logd("%f\n", buffer[i]);
+  }
+  //exit(0);
+  
+  ctx->win_sound = create_soundf(buffer, size);
+  free(buffer);
+  
+  ctx->jmp_sound = ctx->win_sound;
+  //ctx->lose_sound = ctx->win_sound;
+  
+  
+  
+  //alSourcef (ctx->source, AL_GAIN, 0);
 }
 
 void render_square(context * ctx, vec2 pos, vec2 size){
@@ -541,10 +597,7 @@ void mainloop(context * ctx)
   if(ctx->player_stick){
     // fix player unless jumping.
     vec2 dist = square_distance(ctx->squares->pos[idx2],ctx->squares->pos[idx],ctx->squares->size[idx2],ctx->squares->size[idx]);
-    printf("Fixit?..\n");
-    vec2_print(dist);logd("\n");
     if(MIN(dist.x, dist.y) < -0.00001){
-      printf("yes..\n");
       vec2 p2 = ctx->squares->pos[idx2];
       vec2 p1 = ctx->squares->pos[idx];
       vec2 d3 = vec2_sub(p2, p1);
@@ -558,7 +611,6 @@ void mainloop(context * ctx)
       vec2 perp = d3;
       
       vec2 mov = vec2_scale(vec2_mul(dist, perp), -1);
-      logd("move: ");vec2_print(mov);logd("\n");
       if(vec2_len(mov) > 0.000){    
 	ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(mov, 0.25));
       }
@@ -571,13 +623,11 @@ void mainloop(context * ctx)
     float d = MAX(dist.x, dist.y);
     vec2 s1 = ctx->squares->size[idx];
     
-    printf("Leave orbit?.. %f %f %f %f %f\n", d, dist.x, dist.y, s1.x, s1.y);
     vec2 p2 = ctx->squares->pos[idx2];
     vec2 p1 = ctx->squares->pos[idx];
     vec2 dd = vec2_sub(p2, p1);
     if(dist.y > -s1.y && !ctx->player_stick ){
       // no vertical collision
-      printf(">> %f\n", SIGN(dd.y) * ctx->player_gravity * 0.5);
       ctx->player_current_direction.y += SIGN(dd.y) * ctx->player_gravity * 0.5;
     }
     
@@ -628,6 +678,10 @@ void mainloop(context * ctx)
       }
       if(d < -0.0001){
 	if(type == SQUARE_WIN || type == SQUARE_LOSE){
+	  if(type == SQUARE_LOSE)
+	    alSourcePlay(ctx->lose_sound);
+	  if(type == SQUARE_WIN)
+	    alSourcePlay(ctx->win_sound);
 	  ctx->file = 0;
 	  load_level(ctx, ctx->current_level + (type == SQUARE_WIN ? 1 : 0)); return;
 	}else if(type == SQUARE_BLOCK){
@@ -663,7 +717,7 @@ void mainloop(context * ctx)
     vec2 d = vec2_sub(p2, p1);
     vec2 da = vec2_new(-d.y, d.x);
     float ang = SIGN( vec2_mul_inner(ctx->player_current_direction, da));
-    
+
     
     if(MIN(dist.x, dist.y) < -0.00001){
       mat2 rot = mat2_rotation(ang * PI/4);
@@ -678,6 +732,7 @@ void mainloop(context * ctx)
       for(int i = 0; i < 10; i++){
 	particle_push(ctx, pos, vec2_new(cos(2 * PI * randf32()), sin(2 * PI *randf32())), 0.04, 0.4, 1);
       }
+      alSourcePlay(ctx->jmp_sound);
     }
   }
 
