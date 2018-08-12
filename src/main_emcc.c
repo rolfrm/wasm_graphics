@@ -6,10 +6,14 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include <iron/types.h>
+#include <iron/linmath.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>
+#include "squares.h"
+#include "particles.h"
 #include "main.h"
 
 #define ASSERT(x) if(x){}

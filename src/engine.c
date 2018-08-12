@@ -409,22 +409,54 @@ void initialize(context * ctx){
   
   ctx->lose_sound = create_soundf(buffer, size);
   free(buffer);
-  size = 30000;
+  size = 50000;
   buffer= calloc(size * sizeof(float), 1);
-  var sine = create_sine(440);
-  var env = create_adsr(0.1, 0.2, 0.4, 0.1);
-  env->sub = sine;
-  for(int i = 0; i < size; i++){
-    //buffer[i] = sin(pow(i * 0.01, 2.0) * 0.1);
-    env->f(buffer, i, env);
-    logd("%f\n", buffer[i]);
+
+  {
+    var sine = create_sine(440);
+    var env = create_adsr(0.1, 0.2, 0.4, 0.1);
+    env->sub = sine;
+    for(int i = 0; i < size; i++){
+      //buffer[i] = sin(pow(i * 0.01, 2.0) * 0.1);
+      env->f(buffer, i, env);
+      logd("%f\n", buffer[i]);
+    }
+  }
+  {
+    var sine = create_sine(440 * 1.5);
+    var env = create_adsr(0.1, 0.2, 0.4, 0.1);
+    env->sub = sine;
+    for(int i = 5000; i < size; i++){
+      //buffer[i] = sin(pow(i * 0.01, 2.0) * 0.1);
+      env->f(buffer + 5000, i - 5000, env);
+    }
+  }
+  {
+    var sine = create_sine(440 * 1.6);
+    var env = create_adsr(0.1, 0.2, 0.4, 0.1);
+    env->sub = sine;
+    for(int i = 10000; i < size; i++){
+      //buffer[i] = sin(pow(i * 0.01, 2.0) * 0.1);
+      env->f(buffer + 10000, i - 10000, env);
+      buffer[i] *= 0.33;
+    }
+  }
+  {
+    var sine = create_sine(440 * 1.5);
+    var env = create_adsr(0.1, 0.2, 0.4, 0.1);
+    env->sub = sine;
+    for(int i = 15000; i < size; i++){
+      //buffer[i] = sin(pow(i * 0.01, 2.0) * 0.1);
+      env->f(buffer + 15000, i - 15000, env);
+      buffer[i] *= 0.33;
+    }
   }
   //exit(0);
   
   ctx->win_sound = create_soundf(buffer, size);
   free(buffer);
   
-  ctx->jmp_sound = ctx->win_sound;
+  //ctx->jmp_sound = ctx->win_sound;
   //ctx->lose_sound = ctx->win_sound;
   
   
