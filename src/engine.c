@@ -24,8 +24,11 @@
 #include "flat_geom.c"
 #include "squares.h"
 #include "squares.c"
+#include "particles.h"
+#include "particles.c"
 #include "main.h"
 #include "utils.h"
+
 
 void on_req_fullscreen();
 
@@ -326,9 +329,10 @@ void initialize(context * ctx){
   ctx->square = gl_array_2d(data, 4);
 
   ctx->squares = squares_create(ctx->squares_file);
+  ctx->particles = particles_create("particles");
   ctx->current_vbo = -1;
 
-  //load_level(ctx, 5);
+  //load_level(ctx, 1);
   ALCdevice* device = alcOpenDevice(NULL);
   ALCcontext* context = alcCreateContext(device, NULL);
   ctx->alc_device = device;
@@ -394,6 +398,11 @@ void run_test(){
   //ERROR("..\n");
 }
 
+void particle_push(context * ctx, vec2 pos, vec2 dir, float size, float lifetime, particle_type type){
+  int id = ctx->particle_counter++;
+  particles_set(ctx->particles, id, pos, dir, size, lifetime, type);
+}
+ 
 void mainloop(context * ctx)
 {
   if(!ctx->initialized)
@@ -420,11 +429,61 @@ void mainloop(context * ctx)
       glUniform4f(ctx->color_uniform_loc, 1,0,0,1);
     }else if(type == SQUARE_WIN){
       glUniform4f(ctx->color_uniform_loc, 0,1,0,1);
-    }else{
+    }else if(type == SQUARE_PLAYER){
+      glUniform4f(ctx->color_uniform_loc, 0.5,0.5,1,1);
+      vec2 p = ctx->squares->pos[i+1];
+      vec2 s = ctx->squares->size[i+1];
+      render_square(ctx, p,s);
+      var s2 = vec2_mul(s, vec2_new(0.15,0.4));
+      vec2 p2 = vec2_add(p, s2);
+      glUniform4f(ctx->color_uniform_loc, 0.0,0.0,0,1);
+
+      render_square(ctx, p2,s2);
+      vec2 p3 = vec2_add(p2, vec2_new(s2.x * 3,0));
+      render_square(ctx, p3,s2);
+      
+    }
+    else{
       glUniform4f(ctx->color_uniform_loc, 1,1,1,1);
     }
-    render_square(ctx, ctx->squares->pos[i+1],ctx->squares->size[i+1]);
+    if(type != SQUARE_PLAYER)
+      render_square(ctx, ctx->squares->pos[i+1],ctx->squares->size[i+1]);
   }
+
+  int to_remove = 0;
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  var particles = ctx->particles;
+  for(size_t _i = 0; _i < ctx->particles->count; _i++){
+    
+    size_t i = _i + 1;
+    
+    var lifetime = particles->lifetime[i] * 5;
+    glUniform4f(ctx->color_uniform_loc, 1,1,0,lifetime < 1 ? lifetime : 1);
+    render_square(ctx, particles->pos[i+1],vec2_new1(particles->size[i+1]));
+    particles->pos[i] = vec2_add(particles->pos[i], vec2_scale(particles->dir[i], 0.01));
+    
+    particles->lifetime[i] -= 0.01;
+    if(particles->lifetime[i] < 0){
+      to_remove++;
+    }
+  }
+  
+  glDisable(GL_BLEND);
+  if(to_remove > 0){
+    int j =0;
+    int ids[to_remove];
+    var particles = ctx->particles;
+    for(size_t _i = 0; _i < ctx->particles->count; _i++){
+      size_t i = _i + 1;
+      if(particles->lifetime[i] < 0){
+	ids[j] = particles->id[i];
+	j++;
+      }
+    }
+    particles_remove(particles, ids, to_remove);
+  }
+  
   
   glfwSwapBuffers(ctx->win);
   glfwPollEvents();
@@ -554,7 +613,7 @@ void mainloop(context * ctx)
   
   ctx->player_current_square = minid;
   if(space && ctx->player_stick && ctx->jmpcnt < 0){
-    logd("JMP!\n");
+
     vec2 dist = square_distance(ctx->squares->pos[idx2],ctx->squares->pos[idx],ctx->squares->size[idx2],ctx->squares->size[idx]);
     vec2 p2 = ctx->squares->pos[idx2];
     vec2 p1 = ctx->squares->pos[idx];
@@ -562,15 +621,20 @@ void mainloop(context * ctx)
     vec2 da = vec2_new(-d.y, d.x);
     float ang = SIGN( vec2_mul_inner(ctx->player_current_direction, da));
     
+    
     if(MIN(dist.x, dist.y) < -0.00001){
       mat2 rot = mat2_rotation(ang * PI/4);
       vec2 jmp = mat2_mul_vec2(rot, ctx->player_current_direction);
       ctx->player_current_direction = jmp;
       ctx->player_gravity = 0.05;
       ctx->player_stick = false;
-      ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.03));
-      ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.03));
+      var pos = ctx->squares->pos[idx];
+      ctx->squares->pos[idx] = vec2_add(pos, vec2_scale(ctx->player_current_direction,0.03));
+      ctx->squares->pos[idx] = vec2_add(pos, vec2_scale(ctx->player_current_direction,0.03));
       ctx->jmpcnt = 10;
+      for(int i = 0; i < 10; i++){
+	particle_push(ctx, pos, vec2_new(cos(2 * PI * randf32()), sin(2 * PI *randf32())), 0.04, 0.4, 1);
+      }
     }
   }
 

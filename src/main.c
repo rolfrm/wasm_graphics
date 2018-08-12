@@ -14,6 +14,7 @@
 #include <iron/time.h>
 #define ASSERT(x) if(x){}
 #include "squares.h"
+#include "particles.h"
 #include "main.h"
 
 void on_req_fullscreen(){

@@ -25,7 +25,7 @@ typedef struct{
   unsigned int  source;
 
   squares * squares;
-
+  
   int player_id;
   int player_current_square;
   vec2 player_current_direction;
@@ -45,6 +45,9 @@ typedef struct{
 
   bool paused;
   int paused_cnt;
+
+  particles * particles;
+  int particle_counter;
   
 }context;
 
