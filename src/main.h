@@ -40,6 +40,9 @@ typedef struct{
 
   const char * file;
   u64 file_modify;
+
+  bool paused;
+  int paused_cnt;
   
 }context;
 

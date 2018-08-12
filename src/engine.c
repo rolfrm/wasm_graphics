@@ -406,6 +406,8 @@ void mainloop(context * ctx)
   GLFWwindow * win = ctx->win;
   int f = glfwGetKey(win, GLFW_KEY_F);
   int space = glfwGetKey(win, GLFW_KEY_SPACE);
+  int enter = glfwGetKey(win, GLFW_KEY_ENTER);
+  int r = glfwGetKey(win, GLFW_KEY_R);
   glClearColor(0,0,0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
   for(size_t i = 0 ; i < ctx->squares->count; i++){
@@ -426,7 +428,7 @@ void mainloop(context * ctx)
     on_req_fullscreen();
   }
 
-
+  if(!ctx->paused){
   size_t idx2 = 0;
   squares_lookup(ctx->squares, &ctx->player_current_square, &idx2, 1);
   //ASSERT(idx);
@@ -569,8 +571,9 @@ void mainloop(context * ctx)
   }
 
 
-  
+
   ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.06));
+  }
   printf("Player: %i",ctx->player_stick); vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
   ctx->jmpcnt--;
 
@@ -578,5 +581,15 @@ void mainloop(context * ctx)
   if(ctx->file != NULL)
     load_level_file(ctx,ctx->file);
   //ctx->q += 0.001;
+
+  if(r){
+    ctx->file = NULL;
+    load_level(ctx, ctx->current_level); return;
+  }
+  if(enter && ctx->paused_cnt < 0){
+    ctx->paused = !ctx->paused;
+    ctx->paused_cnt = 20;
+  }
+  ctx->paused_cnt--;
   
 }

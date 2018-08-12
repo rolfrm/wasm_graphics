@@ -27,10 +27,11 @@ int main(){
   //GLFWmonitor * monitor = glfwGetPrimaryMonitor();
   //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
   
-  GLFWwindow * win = glfwCreateWindow(512, 512, "", NULL, NULL);
+  GLFWwindow * win = glfwCreateWindow(700, 700, "", NULL, NULL);
   glfwMakeContextCurrent(win);
   glfwSwapInterval(1);  
   ASSERT(glewInit() == GLEW_OK);
+  //glViewport(512,512,512,512);
   context ctx = {.win = win};
 
   while(glfwWindowShouldClose(ctx.win) == false){
