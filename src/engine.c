@@ -90,21 +90,24 @@ u64 get_file_time2(const char * path){
 FILE *popen(const char *command, const char *mode);
 int pclose(FILE *stream);
 
-void load_level_file(context * ctx, const char * file){
+void load_level_file(context * ctx, int fileid){
   UNUSED(ctx);
   FILE *cmd;
   char result[1024];
+  char file[245];
+  sprintf(file, "level%i.data", fileid);
 
   char scmd[1025];
   sprintf(scmd, "cat %s", file);
   u64 stamp = get_file_time2(file);
   bool reload = false;
-  if(ctx->file == file && stamp == ctx->file_modify){
+  if(ctx->file == fileid && stamp == ctx->file_modify){
     return;
-  }else if(ctx->file != NULL){
+  }else if(ctx->file > 0){
     reload = true;
   }
-  ctx->file = file;
+  logd("RELOADING? %i\n");
+  ctx->file = fileid;
   ctx->file_modify = stamp;
   cmd = popen(scmd, "r");
   if (cmd == NULL) {
@@ -278,7 +281,7 @@ void load_level(context * ctx, int n){
   }else if(n == 4){
     load_level4(ctx);
   }else if(n == 5){
-    load_level_file(ctx,"level1.data");
+    load_level_file(ctx,1);
   }else{
     printf("Game won: %i\n", n);
     exit(0);
@@ -322,9 +325,10 @@ void initialize(context * ctx){
   }
   ctx->square = gl_array_2d(data, 4);
 
-  ctx->squares = squares_create(NULL);
+  ctx->squares = squares_create(ctx->squares_file);
+  ctx->current_vbo = -1;
 
-  load_level(ctx, 5);
+  //load_level(ctx, 5);
   ALCdevice* device = alcOpenDevice(NULL);
   ALCcontext* context = alcCreateContext(device, NULL);
   ctx->alc_device = device;
@@ -522,7 +526,7 @@ void mainloop(context * ctx)
       }
       if(d < -0.0001){
 	if(type == SQUARE_WIN || type == SQUARE_LOSE){
-	  ctx->file = NULL;
+	  ctx->file = 0;
 	  load_level(ctx, ctx->current_level + (type == SQUARE_WIN ? 1 : 0)); return;
 	}else if(type == SQUARE_BLOCK){
 	  if(dist.x < dist.y){
@@ -578,12 +582,12 @@ void mainloop(context * ctx)
   ctx->jmpcnt--;
 
   ctx->game_time += 0.01;
-  if(ctx->file != NULL)
+  if(ctx->file > 0)
     load_level_file(ctx,ctx->file);
   //ctx->q += 0.001;
 
   if(r){
-    ctx->file = NULL;
+    ctx->file = -1;
     load_level(ctx, ctx->current_level); return;
   }
   if(enter && ctx->paused_cnt < 0){

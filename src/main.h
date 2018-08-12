@@ -37,8 +37,10 @@ typedef struct{
   int current_level;
 
   float game_time;
-
-  const char * file;
+  
+  const char * squares_file;
+  
+  int file;
   u64 file_modify;
 
   bool paused;

@@ -32,11 +32,18 @@ int main(){
   glfwSwapInterval(1);  
   ASSERT(glewInit() == GLEW_OK);
   //glViewport(512,512,512,512);
-  context ctx = {.win = win};
 
-  while(glfwWindowShouldClose(ctx.win) == false){
+  icy_mem * mem = icy_mem_create("game_state");
+  icy_mem_realloc(mem, sizeof(context));
+
+  context * ctx = mem->ptr;
+  //memset(ctx,0,sizeof(*ctx));
+  ctx->squares_file = "squares";
+  ctx->initialized = false;
+  ctx->win = win;
+  while(glfwWindowShouldClose(ctx->win) == false){
     //iron_usleep(100000);
-    mainloop(&ctx);
+    mainloop(ctx);
   }
     
   glfwTerminate();
