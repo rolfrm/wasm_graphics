@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 
 #include "flat_geom.c"
+#include "starry.c"
 #include "squares.h"
 #include "squares.c"
 #include "particles.h"
@@ -292,25 +293,32 @@ void load_level(context * ctx, int n){
 
 }
 
-
-
-
-void run_test();
-void initialize(context * ctx){
-  run_test();
-  ctx->initialized = 1;
-  GLuint vs = make_shader(GL_VERTEX_SHADER, (char *) src_flat_geom_vs, src_flat_geom_vs_len);
-  GLuint fs = make_shader(GL_FRAGMENT_SHADER, (char *) src_flat_geom_fs, src_flat_geom_fs_len);
+u32 load_shader_program(const char * vscode, int vslen, const char * fscode, int fslen){
+  GLuint vs = make_shader(GL_VERTEX_SHADER, (char *) vscode, vslen);
+  GLuint fs = make_shader(GL_FRAGMENT_SHADER, (char *) fscode, fslen);
   GLuint program = 0;
   program = glCreateProgram();
   glAttachShader(program, vs);
   glAttachShader(program, fs);
   glBindAttribLocation(program, 0, "pos");
   glLinkProgram(program);
+  return program;
+}
+
+void run_test();
+void initialize(context * ctx){
+  run_test();
+  ctx->initialized = 1;
+  
+  var program = load_shader_program((char *)src_flat_geom_vs, src_flat_geom_vs_len,(char *)src_flat_geom_fs, src_flat_geom_fs_len);
   ctx->geoshader = program;
   ctx->color_uniform_loc = glGetUniformLocation(program, "color");
   ctx->tform_loc = glGetUniformLocation(program, "tform");
 
+  ctx->stars.program = load_shader_program((char *)src_starry_vs, src_starry_vs_len,(char *)src_starry_fs, src_starry_fs_len);
+  ctx->stars.color_loc = glGetUniformLocation(ctx->stars.program, "color");
+  ctx->stars.offset_loc = glGetUniformLocation(ctx->stars.program, "offset");
+  
   ctx->geom1_pts = 3;
   float data[100];
   float ang = 2 * PI / (float)ctx->geom1_pts;
@@ -385,6 +393,20 @@ void render_square(context * ctx, vec2 pos, vec2 size){
   glDrawArrays(GL_TRIANGLE_FAN, 0, ctx->vbo_points);
 }
 
+
+void render_square2(context * ctx){
+  if(ctx->current_vbo != ctx->square){
+    glBindBuffer(GL_ARRAY_BUFFER, ctx->square);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), 0);
+    glEnableVertexAttribArray(0);
+    ctx->current_vbo = ctx->square;
+    ctx->vbo_points = 4;
+  }
+
+  glDrawArrays(GL_TRIANGLE_FAN, 0, ctx->vbo_points);
+}
+
+
 vec2 square_distance(vec2 p_a, vec2 p_b, vec2 s_a, vec2 s_b){
   vec2 dist = vec2_abs(vec2_sub(p_a, p_b));
   vec2 ds = vec2_add(s_a, s_b);
@@ -413,7 +435,8 @@ void mainloop(context * ctx)
   float rot = ((int)(ctx->game_time * 0.5)) * PI / 2.0;
   rot = 0;
   glUseProgram(ctx->geoshader);
-  ctx->world_tform = mat3_mul(mat3_2d_rotation(rot), mat3_mul( mat3_2d_scale(0.2,0.2), mat3_2d_translation(-ctx->squares->pos[idx].x,-ctx->squares->pos[idx].y)));
+  float world_scale = 0.2;
+  ctx->world_tform = mat3_mul(mat3_2d_rotation(rot), mat3_mul( mat3_2d_scale(world_scale,world_scale), mat3_2d_translation(-ctx->squares->pos[idx].x,-ctx->squares->pos[idx].y)));
   
   glUniform4f(ctx->color_uniform_loc, 1,1,1,1);
   GLFWwindow * win = ctx->win;
@@ -421,8 +444,28 @@ void mainloop(context * ctx)
   int space = glfwGetKey(win, GLFW_KEY_SPACE);
   int enter = glfwGetKey(win, GLFW_KEY_ENTER);
   int r = glfwGetKey(win, GLFW_KEY_R);
-  glClearColor(0,0,0, 1);
+  glClearColor(0.01,0.01,0.04, 1);
   glClear(GL_COLOR_BUFFER_BIT);
+
+  {  // render stars!
+
+    glUseProgram(ctx->stars.program);
+    //glUniform4f(ctx->stars.color_loc, 0, 1, 0, 1);
+    
+    glUniform2f(ctx->stars.offset_loc, 0.05 * ctx->squares->pos[idx].x,0.05 * ctx->squares->pos[idx].y);
+    render_square2(ctx);
+    
+    glUniform2f(ctx->stars.offset_loc, 0.03 * ctx->squares->pos[idx].x+ 2.0,0.03 * ctx->squares->pos[idx].y + 2.0);
+    render_square2(ctx);
+    glUniform2f(ctx->stars.offset_loc, 0.01 * ctx->squares->pos[idx].x+ 4.0,0.01 * ctx->squares->pos[idx].y + 4.0);
+    render_square2(ctx);
+    glUniform2f(ctx->stars.offset_loc, 0.005 * ctx->squares->pos[idx].x+ 18.0,0.005 * ctx->squares->pos[idx].y + 4.0);
+    render_square2(ctx);
+  }
+  
+  //
+  glUseProgram(ctx->geoshader);
+  
   for(size_t i = 0 ; i < ctx->squares->count; i++){
     square_type type = ctx->squares->type[i+1];
     if( type == SQUARE_LOSE){

@@ -16,11 +16,15 @@ all: $(ALL)
 
 .c.o: $(HEADERS)
 	$(CC) $(CFLAGS) $< -o $@ -MMD -MF $@.depends
-src/engine.o: src/flat_geom.c
+src/engine.o: src/flat_geom.o src/starry.o
 src/flat_geom.c: src/flat_geom.vs src/flat_geom.fs
 	echo building shader!
 	xxd -i src/flat_geom.vs > src/flat_geom.c
-	xxd -i src/flat_geom.fs >> src/flat_geom.c		
+	xxd -i src/flat_geom.fs >> src/flat_geom.c
+src/starry.c: src/starry.vs src/starry.fs
+	echo building starry shader!
+	xxd -i src/starry.vs > src/starry.c
+	xxd -i src/starry.fs >> src/starry.c		
 depend: h-depend
 clean:
 	rm -f $(LIB_OBJECTS) $(ALL) src/*.o.depends

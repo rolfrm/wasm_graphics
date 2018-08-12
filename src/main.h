@@ -1,4 +1,10 @@
 
+typedef struct {
+  u32 program;
+  u32 color_loc;
+  u32 offset_loc;
+}starry;
+
 typedef struct{
   GLFWwindow * win;
   float p, q;
@@ -48,8 +54,9 @@ typedef struct{
 
   particles * particles;
   int particle_counter;
-  
+  starry stars; 
 }context;
+
 
 typedef enum {
   SQUARE_BLOCK,
