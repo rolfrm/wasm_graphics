@@ -6,20 +6,24 @@ TARGET = index.js
 OBJECTS =$(SOURCES:.c=.bc)
 LDFLAGS= --llvm-lto=3
 LIBS= -lglfw3 -lopenal ../iron/libiron.bc ../libicydb/libicydb.bc
-CFLAGS = -std=c11 $(OPT) -Wall -Wextra -Werror=implicit-function-declaration -Wformat=0 -D_GNU_SOURCE  -fdiagnostics-color -s USE_GLFW=3 -s WASM=1 -I.. -I../libicydb/include
+CFLAGS = -std=c11 $(OPT) -Wall -Wextra -Werror=implicit-function-declaration -Wformat=0 -D_GNU_SOURCE  -fdiagnostics-color -s USE_GLFW=3 -s WASM=1 -I.. -I../libicydb/include 
 all: $(TARGET)
-$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS) makefile.emcc
 	echo building $(OBJECTS)
 	$(CC) $(CFLAGS)  $(OBJECTS) $(LIBS) -o $@ --verbose
 
 %.bc: %.c $(HEADERS)
 	$(CC) -c  $(CFLAGS) $< -o $@ -MMD -MF $@.depends
-
+src/engine.o: src/flat_geom.o src/starry.o
 src/flat_geom.c: src/flat_geom.vs src/flat_geom.fs
 	echo building shader!
 	xxd -i src/flat_geom.vs > src/flat_geom.c
-	xxd -i src/flat_geom.fs >> src/flat_geom.c		
-
+	xxd -i src/flat_geom.fs >> src/flat_geom.c
+	
+src/starry.c: src/starry.vs src/starry.fs
+	echo building starry shader!
+	xxd -i src/starry.vs > src/starry.c
+	xxd -i src/starry.fs >> src/starry.c
 depend: h-depend
 clean:
 	rm $(OBJECTS) $(TARGET) src/*.bc.depends

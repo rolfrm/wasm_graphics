@@ -30,9 +30,9 @@
 #include "main.h"
 #include "utils.h"
 #include "audio.h"
-
+__thread int logd_enable = false;
 void on_req_fullscreen();
-
+unsigned query_sample_rate_of_audiocontexts();
 i32 make_shader(u32 kind, char * source, u32 length){
   i32 ref = glCreateShader(kind);
   glShaderSource(ref,1,(const GLchar **)&source,(i32 *) &length);
@@ -93,6 +93,26 @@ u64 get_file_time2(const char * path){
 
 FILE *popen(const char *command, const char *mode);
 int pclose(FILE *stream);
+
+/*void load_file_data(context * ctx, char * filedata, size_t len){
+  while(filedata != NULL && *filedata){
+    char * pt1 = memmem(filedata, len, "\n", 1);
+    char * pt2 = strstr(filedata, len, "\\\\", 2);
+    char buffer[512];
+    size_t l = 0;
+    if(pt2 != NULL && (pt2 < pt1 || pt1 == NULL)){
+      l = pt2 - filedata;
+    }else if(pt1 != NULL){
+      l = pt1 - filedata;
+    }else{
+      l = len;
+    }
+    memcpy(buffer, filedata, len);
+    buffer[len] = 0;
+
+  }
+  }*/
+
 
 void load_level_file(context * ctx, int fileid){
   UNUSED(ctx);
@@ -157,7 +177,7 @@ void load_level_file(context * ctx, int fileid){
 	ctx->player_current_direction = vec2_new(x,y);
     }
 
-  }
+    }
   //exit(0);
 
 }
@@ -285,7 +305,7 @@ void load_level(context * ctx, int n){
   }else if(n == 4){
     load_level4(ctx);
   }else if(n == 5){
-    load_level_file(ctx,1);
+    //load_level_file(ctx,1);
   }else{
     printf("Game won: %i\n", n);
     exit(0);
@@ -315,8 +335,8 @@ u32 create_soundf(float * samples, int count){
   ALenum format = AL_FORMAT_MONO16;
   short * data = malloc(count * sizeof(short));
   for(int i = 0; i < count; i++)
-    data[i] = samples[i] * 32000.0;
-  alBufferData(buffers[0], format, data, count, 47000);
+    data[i] = samples[i] * 30000.0;
+  alBufferData(buffers[0], format, data, count, samplerate);
   free(data);
   ALuint sources[1];
   alGenSources(1, sources);
@@ -324,6 +344,7 @@ u32 create_soundf(float * samples, int count){
   return sources[0];
 
 }
+
 
 
 u32 load_shader_program(const char * vscode, int vslen, const char * fscode, int fslen){
@@ -341,10 +362,12 @@ u32 load_shader_program(const char * vscode, int vslen, const char * fscode, int
 
 void run_test();
 void initialize(context * ctx){
+  glfwSetWindowUserPointer(ctx->win, ctx);
+  logd("Initializing..\n");
   run_test();
   ctx->initialized = 1;
-  
-  var program = load_shader_program((char *)src_flat_geom_vs, src_flat_geom_vs_len,(char *)src_flat_geom_fs, src_flat_geom_fs_len);
+
+    var program = load_shader_program((char *)src_flat_geom_vs, src_flat_geom_vs_len,(char *)src_flat_geom_fs, src_flat_geom_fs_len);
   ctx->geoshader = program;
   ctx->color_uniform_loc = glGetUniformLocation(program, "color");
   ctx->tform_loc = glGetUniformLocation(program, "tform");
@@ -371,16 +394,19 @@ void initialize(context * ctx){
   ctx->square = gl_array_2d(data, 4);
 
   ctx->squares = squares_create(ctx->squares_file);
-  ctx->particles = particles_create("particles");
+  ctx->particles = particles_create(ctx->particles_file);
   ctx->current_vbo = -1;
 
-  //load_level(ctx, 1);
+  load_level(ctx, 0);
   ALCdevice* device = alcOpenDevice(NULL);
+  
+  printf("ALC DEVICE: %p\n", device);
   ALCcontext* context = alcCreateContext(device, NULL);
   ctx->alc_device = device;
   ctx->alc_context = context;
   alcMakeContextCurrent(context);
-  
+  samplerate = query_sample_rate_of_audiocontexts();
+  printf("ALC SAMPLE Rate: %i\n", samplerate);
   ALfloat listenerPos[] = {0.0, 0.0, 1.0};
   ALfloat listenerVel[] = {0.0, 0.0, 0.0};
   ALfloat listenerOri[] = {0.0, 0.0, -1.0, 0.0, 1.0, 0.0};
@@ -398,6 +424,7 @@ void initialize(context * ctx){
 
   
   ctx->jmp_sound = create_soundf(buffer, size);
+  
   free(buffer);
   size = 20000;
   buffer= malloc(size * sizeof(float));
@@ -419,7 +446,6 @@ void initialize(context * ctx){
     for(int i = 0; i < size; i++){
       //buffer[i] = sin(pow(i * 0.01, 2.0) * 0.1);
       env->f(buffer, i, env);
-      logd("%f\n", buffer[i]);
     }
   }
   {
@@ -454,14 +480,14 @@ void initialize(context * ctx){
   //exit(0);
   
   ctx->win_sound = create_soundf(buffer, size);
-  free(buffer);
+  //free(buffer);
   
   //ctx->jmp_sound = ctx->win_sound;
   //ctx->lose_sound = ctx->win_sound;
   
   
   
-  //alSourcef (ctx->source, AL_GAIN, 0);
+  alSourcef (ctx->lose_sound, AL_GAIN, 0.25);
 }
 
 void render_square(context * ctx, vec2 pos, vec2 size){
@@ -517,7 +543,26 @@ void mainloop(context * ctx)
 {
   if(!ctx->initialized)
     initialize(ctx);
+  alcMakeContextCurrent(ctx->alc_context);
+  
+  vec2 winsize = get_drawing_size();
+  int nw = winsize.x;
+  int nh = winsize.y;
+  if(ctx->win_height != nh || ctx->win_width != nw){
+    printf("NEW WINDOW SIZE: %i %i\n", nw, nh);
+  
+    glfwSetWindowSize(ctx->win, nw, nh);
+    ctx->win_height = nh;
+    ctx->win_width  = nw;
+    int ms = MIN(nh,nw);
+    int x = (nw - ms) / 2;
+    int y = (nh - ms) / 2;
+    glViewport(x,y,ms, ms);
+  }
+  
 
+
+  
   size_t idx = 0;
   squares_lookup(ctx->squares, &ctx->player_id, &idx, 1);
   float rot = ((int)(ctx->game_time * 0.5)) * PI / 2.0;
@@ -529,7 +574,7 @@ void mainloop(context * ctx)
   glUniform4f(ctx->color_uniform_loc, 1,1,1,1);
   GLFWwindow * win = ctx->win;
   int f = glfwGetKey(win, GLFW_KEY_F);
-  int space = glfwGetKey(win, GLFW_KEY_SPACE);
+  //int space = glfwGetKey(win, GLFW_KEY_SPACE);
   int enter = glfwGetKey(win, GLFW_KEY_ENTER);
   int r = glfwGetKey(win, GLFW_KEY_R);
   glClearColor(0.01,0.01,0.04, 1);
@@ -664,7 +709,7 @@ void mainloop(context * ctx)
     }
     
     if(dist.x > -s1.x && !ctx->player_stick){
-      printf(">>>> %f\n", SIGN(dd.x) * ctx->player_gravity * 0.5);
+      
       // no vertical collision
       ctx->player_current_direction.x += SIGN(dd.x) * ctx->player_gravity * 0.5;
     }
@@ -681,7 +726,7 @@ void mainloop(context * ctx)
   }
   float l = vec2_len(ctx->player_current_direction);
   if(l < 1 && ctx->player_stick){
-    printf("accelerate..\n");
+
     ctx->player_current_direction = vec2_scale(ctx->player_current_direction, 1.1 );
   }
   if( l > 1){
@@ -741,7 +786,7 @@ void mainloop(context * ctx)
   }
   
   ctx->player_current_square = minid;
-  if(space && ctx->player_stick && ctx->jmpcnt < 0){
+  if(ctx->jump && ctx->player_stick && ctx->jmpcnt < 0){
 
     vec2 dist = square_distance(ctx->squares->pos[idx2],ctx->squares->pos[idx],ctx->squares->size[idx2],ctx->squares->size[idx]);
     vec2 p2 = ctx->squares->pos[idx2];
@@ -767,12 +812,13 @@ void mainloop(context * ctx)
       alSourcePlay(ctx->jmp_sound);
     }
   }
+  ctx->jump = false;
 
 
 
   ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.06));
   }
-  printf("Player: %i",ctx->player_stick); vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
+  //printf("Player: %i",ctx->player_stick); vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
   ctx->jmpcnt--;
 
   ctx->game_time += 0.01;
@@ -787,6 +833,8 @@ void mainloop(context * ctx)
   if(enter && ctx->paused_cnt < 0){
     ctx->paused = !ctx->paused;
     ctx->paused_cnt = 20;
+    vec2 dsize = get_drawing_size();
+    printf("%f %f\n", dsize.x, dsize.y);
   }
   ctx->paused_cnt--;
   

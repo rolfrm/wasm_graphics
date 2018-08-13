@@ -1,7 +1,7 @@
 #version 100
 precision lowp float;
 //uniform vec4 color;
-varying in vec2 uv;
+varying vec2 uv;
 float random (in vec2 st) {
     return fract(sin(dot(st.xy,
                          vec2(12.9898,78.233)))

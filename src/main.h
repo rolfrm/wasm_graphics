@@ -5,6 +5,12 @@ typedef struct {
   u32 offset_loc;
 }starry;
 
+typedef enum mouse_mode{
+  GAME_MODE_UNKNOWN,
+  GAME_MODE_TOUCH,
+  GAME_MODE_PRESS
+}mouse_mode;
+
 typedef struct{
   GLFWwindow * win;
   float p, q;
@@ -44,7 +50,7 @@ typedef struct{
 
   float game_time;
   
-  const char * squares_file;
+  char * squares_file;
   
   int file;
   u64 file_modify;
@@ -59,6 +65,13 @@ typedef struct{
   u32 jmp_sound;
   u32 win_sound;
   u32 lose_sound;
+  char * particles_file;
+
+  bool jump;
+
+  int win_height, win_width;
+
+  mouse_mode jmp_mode;
 }context;
 
 
@@ -72,3 +85,4 @@ typedef enum {
 
 
 void mainloop(context * ctx);
+vec2 get_drawing_size();

@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
-int samplerate = 47000;
+
+int samplerate = 44100;
 void sinefilter(float * out, int sample, audiothing * thing){
   float f = ((float *)&thing->data)[0];
   out[sample] += sin((float)(sample / (float) samplerate) * f * 2 * 3.14) * 0.5;

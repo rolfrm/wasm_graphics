@@ -12,6 +12,7 @@
 #include <iron/linmath.h>
 #include <iron/types.h>
 #include <iron/time.h>
+#include <iron/utils.h>
 #define ASSERT(x) if(x){}
 #include "squares.h"
 #include "particles.h"
@@ -23,6 +24,24 @@ void on_req_fullscreen(){
 }
 
 
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+  UNUSED(button);UNUSED(mods);
+  if(action == GLFW_PRESS){
+    context * ctx= glfwGetWindowUserPointer(window);
+    ctx->jump = true;
+  }
+    
+}
+
+unsigned query_sample_rate_of_audiocontexts(){
+  return 44100;
+}
+
+vec2 get_drawing_size(){
+  return vec2_new(1000,700);
+}
+
 int main(){
   glfwInit();
   //GLFWmonitor * monitor = glfwGetPrimaryMonitor();
@@ -30,7 +49,9 @@ int main(){
   
   GLFWwindow * win = glfwCreateWindow(700, 700, "", NULL, NULL);
   glfwMakeContextCurrent(win);
-  glfwSwapInterval(1);  
+  glfwSwapInterval(1);
+  glfwSetMouseButtonCallback(win, mouse_button_callback);
+    
   ASSERT(glewInit() == GLEW_OK);
   //glViewport(512,512,512,512);
 
@@ -39,9 +60,12 @@ int main(){
 
   context * ctx = mem->ptr;
   //memset(ctx,0,sizeof(*ctx));
-  ctx->squares_file = "squares";
+  ctx->squares_file = (char *)"squares";
+  ctx->particles_file = (char *)"particles";
   ctx->initialized = false;
   ctx->win = win;
+  ctx->win_height = 0;
+  ctx->win_width = 0
   while(glfwWindowShouldClose(ctx->win) == false){
     //iron_usleep(100000);
     mainloop(ctx);
