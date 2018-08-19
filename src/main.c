@@ -37,8 +37,13 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 unsigned query_sample_rate_of_audiocontexts(){
   return 44100;
 }
-
+GLFWwindow * win;
 vec2 get_drawing_size(){
+  if(win != NULL){
+    int w, h;
+    glfwGetWindowSize(win, &w, &h);
+    return vec2_new(w, h);
+  }
   return vec2_new(1000,700);
 }
 
@@ -47,7 +52,7 @@ int main(){
   //GLFWmonitor * monitor = glfwGetPrimaryMonitor();
   //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
   
-  GLFWwindow * win = glfwCreateWindow(700, 700, "", NULL, NULL);
+  win = glfwCreateWindow(700, 700, "", NULL, NULL);
   glfwMakeContextCurrent(win);
   glfwSwapInterval(1);
   glfwSetMouseButtonCallback(win, mouse_button_callback);
@@ -65,7 +70,7 @@ int main(){
   ctx->initialized = false;
   ctx->win = win;
   ctx->win_height = 0;
-  ctx->win_width = 0
+  ctx->win_width = 0;
   while(glfwWindowShouldClose(ctx->win) == false){
     //iron_usleep(100000);
     mainloop(ctx);

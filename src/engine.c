@@ -30,6 +30,8 @@
 #include "main.h"
 #include "utils.h"
 #include "audio.h"
+#include "level1.c"
+
 __thread int logd_enable = false;
 void on_req_fullscreen();
 unsigned query_sample_rate_of_audiocontexts();
@@ -94,25 +96,79 @@ u64 get_file_time2(const char * path){
 FILE *popen(const char *command, const char *mode);
 int pclose(FILE *stream);
 
-/*void load_file_data(context * ctx, char * filedata, size_t len){
-  while(filedata != NULL && *filedata){
+void load_file_lines(const char * filedata, size_t len, void (* load_line)(const char * line, void * userdata), void * userdata){
+  while(filedata != NULL && *filedata && len > 0){
     char * pt1 = memmem(filedata, len, "\n", 1);
-    char * pt2 = strstr(filedata, len, "\\\\", 2);
+    char * pt2 = memmem(filedata, len, "//", 2);
     char buffer[512];
     size_t l = 0;
+    const char * loc = filedata;
     if(pt2 != NULL && (pt2 < pt1 || pt1 == NULL)){
       l = pt2 - filedata;
+      filedata = pt2 + 2;
     }else if(pt1 != NULL){
       l = pt1 - filedata;
+      filedata = pt1 + 1;
     }else{
       l = len;
+      filedata += len;
     }
-    memcpy(buffer, filedata, len);
-    buffer[len] = 0;
-
+    len -= l;
+    memcpy(buffer, loc, l);
+    buffer[l] = 0;
+    if(len > 0){
+      load_line(buffer, userdata);
+    }
   }
-  }*/
+}
 
+typedef struct{
+  int id;
+  context * ctx;
+}level_load_data;
+
+void load_level_data_f(const char * line, void * userdata){
+  level_load_data * dat = userdata;
+  int id = dat->id;
+  context * ctx = dat->ctx;
+  float x,y,w,h;
+  char name[124];
+  int r = sscanf(line, "%f %f %f %f %s\n", &x, &y, &w, &h, &name);
+  int current_square;
+    if(r == 5){
+      printf("%i :: %i, %f %f %f %f '%s'\n",id, r, x,y,w,h, name);
+      int type = -1;
+      if(strcmp(name, "BLOCK") == 0){
+	type = SQUARE_BLOCK;
+      }else if (strcmp(name, "PLAYER") == 0){
+	type = SQUARE_PLAYER;
+      }else if (strcmp(name, "WIN") == 0){
+	type = SQUARE_WIN;
+      }else if (strcmp(name, "LOSE") == 0){
+	type = SQUARE_LOSE;
+      }
+      ASSERT(type != -1);
+      if(!(type == SQUARE_PLAYER))
+	squares_set(ctx->squares, id, vec2_new(x,y), vec2_new(w, h), type); 
+      dat->id += 1;
+      
+    }else if(sscanf(line, "current_square: %i", &current_square) == 1){
+      ctx->player_current_square = current_square;
+    }else if(sscanf(line, "current_direction: %f %f", &x, &y) == 2){
+      ctx->player_current_direction = vec2_new(x,y);
+    }
+}
+
+
+void load_level_data(context * ctx, const char * filedata, size_t len){
+  ctx->player_id = 1;
+  ctx->player_current_square = 2;
+  ctx->player_current_direction = vec2_new(0.1,0);
+  ctx->player_stick = true;
+  ctx->player_gravity = 1;
+  level_load_data dat = {.id = 1, .ctx = ctx};
+  load_file_lines(filedata, len, load_level_data_f, &dat);
+}
 
 void load_level_file(context * ctx, int fileid){
   UNUSED(ctx);
@@ -305,7 +361,8 @@ void load_level(context * ctx, int n){
   }else if(n == 4){
     load_level4(ctx);
   }else if(n == 5){
-    //load_level_file(ctx,1);
+    //load_level_data(ctx, (char *)level1_data, level1_data_len);
+    load_level_file(ctx,1);
   }else{
     printf("Game won: %i\n", n);
     exit(0);
@@ -397,7 +454,7 @@ void initialize(context * ctx){
   ctx->particles = particles_create(ctx->particles_file);
   ctx->current_vbo = -1;
 
-  load_level(ctx, 0);
+  load_level(ctx, 5);
   ALCdevice* device = alcOpenDevice(NULL);
   
   printf("ALC DEVICE: %p\n", device);
@@ -527,10 +584,28 @@ vec2 square_distance(vec2 p_a, vec2 p_b, vec2 s_a, vec2 s_b){
   return vec2_sub(dist, ds);
 }
 
+
+void test_load_file_lines(const char * data, void * userdata){
+  printf("DATA: %s\n", data);
+  int ** lengths = userdata;
+  **lengths = strlen(data);
+  *lengths += 1;
+
+}
+
 void run_test(){
   vec2 d = square_distance(vec2_new(-0.5,-0.5), vec2_new(1,1), vec2_new(0.5,0.5), vec2_new(1, 1));
   vec2_print(d);
-  
+
+  {
+    const char * data = "hello\nasdasd//xasd\n";
+
+    int lengths[3] = {0};
+    int *ptr = lengths;
+    load_file_lines(data, strlen(data), test_load_file_lines, &ptr);
+    ASSERT(lengths[0] == strlen("hello"));
+    ASSERT(lengths[1] == strlen("asdasd"));
+  }
   //ERROR("..\n");
 }
 
