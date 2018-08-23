@@ -3,6 +3,7 @@ typedef struct {
   u32 program;
   u32 color_loc;
   u32 offset_loc;
+  u32 scale_loc;
 }starry;
 
 typedef enum mouse_mode{
@@ -72,6 +73,8 @@ typedef struct{
   int win_height, win_width;
 
   mouse_mode jmp_mode;
+  sin_state * sin_states;
+  char * sin_file;
 }context;
 
 

@@ -27,6 +27,8 @@
 #include "squares.c"
 #include "particles.h"
 #include "particles.c"
+#include "sin_state.h"
+#include "sin_state.c"
 #include "main.h"
 #include "utils.h"
 #include "audio.h"
@@ -133,6 +135,8 @@ void load_level_data_f(const char * line, void * userdata){
   context * ctx = dat->ctx;
   float x,y,w,h;
   char name[124];
+  char mode[124];
+  float m1,m2,m3,m4;
   int r = sscanf(line, "%f %f %f %f %s\n", &x, &y, &w, &h, &name);
   int current_square;
     if(r == 5){
@@ -147,9 +151,31 @@ void load_level_data_f(const char * line, void * userdata){
       }else if (strcmp(name, "LOSE") == 0){
 	type = SQUARE_LOSE;
       }
+      
+      printf("?? type: %i\n", type);
+      if(type == SQUARE_LOSE){
+
+	r = sscanf(line, "%f %f %f %f %s %s %f %f %f %f\n", &x, &y, &w, &h, &name, &mode, &m1,&m2,&m3,&m4 );
+	printf("Reading again: %i\n", r);
+	if(r > 5){
+	  printf("Read mode: %s %f %f %f %f\n", mode, m1, m2, m3, m4);
+	  if (strcmp(mode, "SIN") == 0){
+	    
+	    float dx = m1, dy = m2, freq = m3, phase = m4;
+	    sin_state_set(dat->ctx->sin_states, id, vec2_new(dx,dy),freq,phase);
+	    
+	  }
+	}else{
+	  sscanf(line, "%f %f %f %f %s\n", &x, &y, &w, &h, &name);
+	}
+
+      }
+
+      
       ASSERT(type != -1);
-      if(!(type == SQUARE_PLAYER))
-	squares_set(ctx->squares, id, vec2_new(x,y), vec2_new(w, h), type); 
+      squares_set(ctx->squares, id, vec2_new(x,y), vec2_new(w, h), type);
+      if(type == SQUARE_PLAYER)
+	dat->ctx->player_id = id;
       dat->id += 1;
       
     }else if(sscanf(line, "current_square: %i", &current_square) == 1){
@@ -201,37 +227,9 @@ void load_level_file(context * ctx, int fileid){
   ctx->player_stick = true;
   ctx->player_gravity = 1;
   
-  int id = 1;
+  level_load_data dat = {.id = 1, .ctx = ctx};
   while (fgets(result, sizeof(result), cmd)) {
-    float x,y,w,h;
-    char name[124];
-    if(strstr(result, "//") != NULL) continue;
-    int r = sscanf(result, "%f %f %f %f %s\n", &x, &y, &w, &h, &name);
-    int current_square;
-    if(r == 5){
-      printf("%i, %f %f %f %f '%s'\n", r, x,y,w,h, name);
-      int type = -1;
-      if(strcmp(name, "BLOCK") == 0){
-	type = SQUARE_BLOCK;
-      }else if (strcmp(name, "PLAYER") == 0){
-	type = SQUARE_PLAYER;
-      }else if (strcmp(name, "WIN") == 0){
-	type = SQUARE_WIN;
-      }else if (strcmp(name, "LOSE") == 0){
-	type = SQUARE_LOSE;
-      }
-      ASSERT(type != -1);
-      if(!(type == SQUARE_PLAYER && reload))
-	squares_set(ctx->squares, id, vec2_new(x,y), vec2_new(w, h), type); 
-      id += 1;
-      
-    }else if(sscanf(result, "current_square: %i", &current_square) == 1){
-      if(!reload)
-	ctx->player_current_square = current_square;
-    }else if(sscanf(result, "current_direction: %f %f", &x, &y) == 2){
-      if(!reload)
-	ctx->player_current_direction = vec2_new(x,y);
-    }
+    load_level_data_f(result, &dat);
 
     }
   //exit(0);
@@ -348,7 +346,7 @@ void load_level(context * ctx, int n){
   ctx->game_time = 0.0;
   ctx->player_stick = true;
   squares_clear(ctx->squares);
-  
+  sin_state_clear(ctx->sin_states);
   if(n == 0){
     load_level0(ctx);
   }else if(n == 1){
@@ -361,11 +359,18 @@ void load_level(context * ctx, int n){
   }else if(n == 4){
     load_level4(ctx);
   }else if(n == 5){
-    //load_level_data(ctx, (char *)level1_data, level1_data_len);
-    load_level_file(ctx,1);
+    load_level_data(ctx, (char *)level1_data, level1_data_len);
+  }else if(n == 6){
+    load_level_file(ctx,2);
+  }else if(n == 7){
+    load_level_file(ctx,3);
+  }else if(n == 8){
+    load_level_file(ctx,4);
   }else{
+    load_level_file(ctx,4);
+    ctx->current_level = 8;
     printf("Game won: %i\n", n);
-    exit(0);
+    //exit(0);
   }
 
 }
@@ -423,8 +428,8 @@ void initialize(context * ctx){
   logd("Initializing..\n");
   run_test();
   ctx->initialized = 1;
-
-    var program = load_shader_program((char *)src_flat_geom_vs, src_flat_geom_vs_len,(char *)src_flat_geom_fs, src_flat_geom_fs_len);
+  
+  var program = load_shader_program((char *)src_flat_geom_vs, src_flat_geom_vs_len,(char *)src_flat_geom_fs, src_flat_geom_fs_len);
   ctx->geoshader = program;
   ctx->color_uniform_loc = glGetUniformLocation(program, "color");
   ctx->tform_loc = glGetUniformLocation(program, "tform");
@@ -432,6 +437,7 @@ void initialize(context * ctx){
   ctx->stars.program = load_shader_program((char *)src_starry_vs, src_starry_vs_len,(char *)src_starry_fs, src_starry_fs_len);
   ctx->stars.color_loc = glGetUniformLocation(ctx->stars.program, "color");
   ctx->stars.offset_loc = glGetUniformLocation(ctx->stars.program, "offset");
+  ctx->stars.scale_loc = glGetUniformLocation(ctx->stars.program, "scale");
   
   ctx->geom1_pts = 3;
   float data[100];
@@ -452,16 +458,19 @@ void initialize(context * ctx){
 
   ctx->squares = squares_create(ctx->squares_file);
   ctx->particles = particles_create(ctx->particles_file);
+  ctx->sin_states = sin_state_create(ctx->sin_file);
   ctx->current_vbo = -1;
 
-  load_level(ctx, 5);
+  load_level(ctx, 8);
   ALCdevice* device = alcOpenDevice(NULL);
   
   printf("ALC DEVICE: %p\n", device);
+
   ALCcontext* context = alcCreateContext(device, NULL);
   ctx->alc_device = device;
   ctx->alc_context = context;
   alcMakeContextCurrent(context);
+
   samplerate = query_sample_rate_of_audiocontexts();
   printf("ALC SAMPLE Rate: %i\n", samplerate);
   ALfloat listenerPos[] = {0.0, 0.0, 1.0};
@@ -545,6 +554,7 @@ void initialize(context * ctx){
   
   
   alSourcef (ctx->lose_sound, AL_GAIN, 0.25);
+  alcSuspendContext(context);
 }
 
 void render_square(context * ctx, vec2 pos, vec2 size){
@@ -562,6 +572,7 @@ void render_square(context * ctx, vec2 pos, vec2 size){
 
   glUniformMatrix3fv(ctx->tform_loc, 1, false, &m3.data[0][0]);
   glDrawArrays(GL_TRIANGLE_FAN, 0, ctx->vbo_points);
+  
 }
 
 
@@ -616,10 +627,11 @@ void particle_push(context * ctx, vec2 pos, vec2 dir, float size, float lifetime
  
 void mainloop(context * ctx)
 {
-  if(!ctx->initialized)
+  if(!ctx->initialized){
     initialize(ctx);
+  }
   alcMakeContextCurrent(ctx->alc_context);
-  
+
   vec2 winsize = get_drawing_size();
   int nw = winsize.x;
   int nh = winsize.y;
@@ -658,7 +670,14 @@ void mainloop(context * ctx)
   {  // render stars!
 
     glUseProgram(ctx->stars.program);
+    int nh = ctx->win_height;
+    int nw = ctx->win_width;
+    int ms = MIN(nh,nw);
+    glUniform1f(ctx->stars.scale_loc, 2 * 500.0 / ms);
     //glUniform4f(ctx->stars.color_loc, 0, 1, 0, 1);
+
+    glUniform2f(ctx->stars.offset_loc, 0.01 * ctx->squares->pos[idx].x,0.01 * ctx->squares->pos[idx].y);
+    render_square2(ctx);
     
     glUniform2f(ctx->stars.offset_loc, 0.05 * ctx->squares->pos[idx].x,0.05 * ctx->squares->pos[idx].y);
     render_square2(ctx);
@@ -861,7 +880,7 @@ void mainloop(context * ctx)
   }
   
   ctx->player_current_square = minid;
-  if(ctx->jump && ctx->player_stick && ctx->jmpcnt < 0){
+  if(ctx->jump && ctx->player_stick){
 
     vec2 dist = square_distance(ctx->squares->pos[idx2],ctx->squares->pos[idx],ctx->squares->size[idx2],ctx->squares->size[idx]);
     vec2 p2 = ctx->squares->pos[idx2];
@@ -880,7 +899,6 @@ void mainloop(context * ctx)
       var pos = ctx->squares->pos[idx];
       ctx->squares->pos[idx] = vec2_add(pos, vec2_scale(ctx->player_current_direction,0.03));
       ctx->squares->pos[idx] = vec2_add(pos, vec2_scale(ctx->player_current_direction,0.03));
-      ctx->jmpcnt = 10;
       for(int i = 0; i < 10; i++){
 	particle_push(ctx, pos, vec2_new(cos(2 * PI * randf32()), sin(2 * PI *randf32())), 0.04, 0.4, 1);
       }
@@ -893,8 +911,26 @@ void mainloop(context * ctx)
 
   ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.06));
   }
+  
+  {
+    var tsin = ctx->sin_states;
+    size_t indexes[tsin->count];
+    squares_lookup(ctx->squares, tsin->id + 1, indexes, tsin->count);
+    for(size_t _i = 0; _i < tsin->count; _i++){
+
+      size_t i = _i + 1;
+      float cphase = tsin->phase[i];
+      float freq = tsin->freq[i];
+      vec2 d =tsin->dir[i];
+      float nphase = cphase + 0.01;
+      tsin->phase[i] = nphase;
+      float dif = sin(nphase * freq) - sin(cphase * freq);
+
+      var sqindex = indexes[_i];
+      ctx->squares->pos[sqindex] = vec2_add(ctx->squares->pos[sqindex], vec2_scale(d, dif));
+    }
+  }
   //printf("Player: %i",ctx->player_stick); vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
-  ctx->jmpcnt--;
 
   ctx->game_time += 0.01;
   if(ctx->file > 0)

@@ -16,8 +16,11 @@
 #define ASSERT(x) if(x){}
 #include "squares.h"
 #include "particles.h"
+#include "sin_state.h"
 #include "main.h"
 
+#include <AL/al.h>
+#include <AL/alc.h>
 void on_req_fullscreen(){
   //
   
@@ -48,6 +51,7 @@ vec2 get_drawing_size(){
 }
 
 int main(){
+
   glfwInit();
   //GLFWmonitor * monitor = glfwGetPrimaryMonitor();
   //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -71,6 +75,7 @@ int main(){
   ctx->win = win;
   ctx->win_height = 0;
   ctx->win_width = 0;
+  ctx->sin_file = (char *) "sin_file";
   while(glfwWindowShouldClose(ctx->win) == false){
     //iron_usleep(100000);
     mainloop(ctx);

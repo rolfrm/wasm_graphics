@@ -1,7 +1,7 @@
 #version 100
 precision lowp float;
-//uniform vec4 color;
 varying vec2 uv;
+uniform float scale;
 float random (in vec2 st) {
     return fract(sin(dot(st.xy,
                          vec2(12.9898,78.233)))
@@ -32,8 +32,8 @@ float noise (in vec2 st) {
 }
 
 void main(){
-  float n = random(floor(uv * 200.0));
-  float n2 = random(floor(uv * 200.0) + 10.0) * 2.0;
+  float n = random(floor(uv * 200.0 / scale));
+  float n2 = random(floor(uv * 200.0/ scale) + 10.0) * 2.0;
   n = pow(n, 4.0);
   n = n * 80.0 - 79.0;
   if(n < 0.0) discard;
