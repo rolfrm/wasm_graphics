@@ -1,6 +1,6 @@
 OPT = -g0 -O3
 LIB_SOURCES1 = main.c engine.c utils.c audio.c 
-LEVEL_SOURCES = level1.data level2.data level3.data level4.data
+LEVEL_SOURCES = level1.data level2.data level3.data level4.data level5.data level6.data level7.data
 
 LIB_SOURCES = $(addprefix src/, $(LIB_SOURCES1))
 CC = gcc

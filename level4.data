@@ -1,7 +1,6 @@
 current_square: 8
 current_direction: 0.1 0.0
 
-//10 16 0.1 0.1 PLAYER
 0 1 0.1 0.1 PLAYER
 0.5 2.0 1.5 0.5 BLOCK
 

@@ -36,6 +36,9 @@
 #include "level2.c"
 #include "level3.c"
 #include "level4.c"
+#include "level5.c"
+#include "level6.c"
+#include "level7.c"
 
 __thread int logd_enable = false;
 void on_req_fullscreen();
@@ -70,9 +73,6 @@ i32 make_shader(u32 kind, char * source, u32 length){
       printf("Shader Info log:\n **************************\n");
       printf("%s",log);
       printf("\n***************************\n");
-      //printf("Source:\n");
-      //printf("%s", source);
-      //printf("\n***************************\n");
     }
   }
 
@@ -132,6 +132,7 @@ void load_file_lines(const char * filedata, size_t len, void (* load_line)(const
 typedef struct{
   int id;
   context * ctx;
+  float offset_x, offset_y;
 }level_load_data;
 
 void load_level_data_f(const char * line, void * userdata){
@@ -178,7 +179,7 @@ void load_level_data_f(const char * line, void * userdata){
 
       
       ASSERT(type != -1);
-      squares_set(ctx->squares, id, vec2_new(x,y), vec2_new(w, h), type);
+      squares_set(ctx->squares, id, vec2_new(x + dat->offset_x,y + dat->offset_y), vec2_new(w, h), type);
       if(type == SQUARE_PLAYER)
 	dat->ctx->player_id = id;
       dat->id += 1;
@@ -187,6 +188,11 @@ void load_level_data_f(const char * line, void * userdata){
       ctx->player_current_square = current_square;
     }else if(sscanf(line, "current_direction: %f %f", &x, &y) == 2){
       ctx->player_current_direction = vec2_new(x,y);
+    }else if(sscanf(line, "TRANSLATE %f %f", &x, &y) == 2){
+      dat->offset_x += x;
+      dat->offset_y += y;
+    }else{
+      printf("Unknown glyphs: %s", line);
     }
 }
 
@@ -345,6 +351,8 @@ void load_level0(context * ctx){
 }
 
 
+// level progression that is not totally strange.
+int alt_level_prog[] = {0, 1, 2, 9, 8, 3, 5, 4, 6, 10, 11, 7};  
 
 void load_level(context * ctx, int n){
   ctx->current_level = n;
@@ -352,6 +360,7 @@ void load_level(context * ctx, int n){
   ctx->player_stick = true;
   squares_clear(ctx->squares);
   sin_state_clear(ctx->sin_states);
+  n = alt_level_prog[n];
   if(n == 0){
     load_level0(ctx);
   }else if(n == 1){
@@ -367,17 +376,17 @@ void load_level(context * ctx, int n){
     load_level_data(ctx, (char *)level1_data, level1_data_len);
   }else if(n == 6){
     load_level_data(ctx, (char *)level2_data, level2_data_len);
-    //load_level_file(ctx,2);
   }else if(n == 7){
     load_level_data(ctx, (char *)level3_data, level3_data_len);
-    //load_level_file(ctx,3);
   }else if(n == 8){
     load_level_data(ctx, (char *)level4_data, level4_data_len);
-    
-    //load_level_file(ctx,4);
+  }else if(n == 9){
+    load_level_data(ctx, (char *)level4_data, level5_data_len);
+  }else if(n == 10){
+    load_level_data(ctx, (char *)level4_data, level6_data_len);
+  }else if(n == 11){
+    load_level_data(ctx, (char *)level4_data, level7_data_len);
   }else{
-    load_level_file(ctx,4);
-    ctx->current_level = 8;
     printf("Game won: %i\n", n);
     //exit(0);
   }
@@ -426,6 +435,19 @@ u32 load_shader_program(const char * vscode, int vslen, const char * fscode, int
   glAttachShader(program, fs);
   //glBindAttribLocation(program, 0, "pos");
   glLinkProgram(program);
+  GLint isLinked = 0;
+  glGetProgramiv(program, GL_LINK_STATUS, &isLinked);
+ if (isLinked == GL_FALSE)
+   {
+     GLint maxLength = 0;
+     glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+     char logbuf[maxLength];
+     glGetProgramInfoLog(program, maxLength, &maxLength, logbuf);
+     printf("******* LOG *******\n");
+     printf("%s\n", logbuf);
+     printf("************\n");
+     
+}
   return program;
 }
 
@@ -443,7 +465,7 @@ void initialize(context * ctx){
   ctx->tform_loc = glGetUniformLocation(program, "tform");
 
   ctx->stars.program = load_shader_program((char *)src_starry_vs, src_starry_vs_len,(char *)src_starry_fs, src_starry_fs_len);
-  ctx->stars.color_loc = glGetUniformLocation(ctx->stars.program, "color");
+
   ctx->stars.offset_loc = glGetUniformLocation(ctx->stars.program, "offset");
   ctx->stars.scale_loc = glGetUniformLocation(ctx->stars.program, "scale");
   
@@ -469,7 +491,7 @@ void initialize(context * ctx){
   ctx->sin_states = sin_state_create(ctx->sin_file);
   ctx->current_vbo = -1;
 
-  load_level(ctx, 1);
+  load_level(ctx, 0);
   ALCdevice* device = alcOpenDevice(NULL);
   
   printf("ALC DEVICE: %p\n", device);
@@ -635,11 +657,14 @@ void particle_push(context * ctx, vec2 pos, vec2 dir, float size, float lifetime
  
 void mainloop(context * ctx)
 {
+  
+  
   if(!ctx->initialized){
     initialize(ctx);
+    
   }
+ 
   alcMakeContextCurrent(ctx->alc_context);
-
   vec2 winsize = get_drawing_size();
   int nw = winsize.x;
   int nh = winsize.y;
@@ -655,7 +680,6 @@ void mainloop(context * ctx)
     glViewport(x,y,ms, ms);
   }
   
-
 
   
   size_t idx = 0;
@@ -674,30 +698,31 @@ void mainloop(context * ctx)
   int r = glfwGetKey(win, GLFW_KEY_R);
   glClearColor(0.01,0.01,0.04, 1);
   glClear(GL_COLOR_BUFFER_BIT);
-
+  
+ 
   {  // render stars!
 
     glUseProgram(ctx->stars.program);
     int nh = ctx->win_height;
     int nw = ctx->win_width;
     int ms = MIN(nh,nw);
+    UNUSED(ms);
     glUniform1f(ctx->stars.scale_loc, 2 * 500.0 / ms);
     //glUniform4f(ctx->stars.color_loc, 0, 1, 0, 1);
 
     glUniform2f(ctx->stars.offset_loc, 0.01 * ctx->squares->pos[idx].x,0.01 * ctx->squares->pos[idx].y);
     render_square2(ctx);
     
-    glUniform2f(ctx->stars.offset_loc, 0.05 * ctx->squares->pos[idx].x,0.05 * ctx->squares->pos[idx].y);
+    glUniform2f(ctx->stars.offset_loc, 0.05 * ctx->squares->pos[idx].x,0.05 * ctx->squares->pos[idx].y+ 10);
     render_square2(ctx);
     
     glUniform2f(ctx->stars.offset_loc, 0.03 * ctx->squares->pos[idx].x+ 2.0,0.03 * ctx->squares->pos[idx].y + 2.0);
     render_square2(ctx);
     glUniform2f(ctx->stars.offset_loc, 0.01 * ctx->squares->pos[idx].x+ 4.0,0.01 * ctx->squares->pos[idx].y + 4.0);
     render_square2(ctx);
-    glUniform2f(ctx->stars.offset_loc, 0.005 * ctx->squares->pos[idx].x+ 18.0,0.005 * ctx->squares->pos[idx].y + 4.0);
-    render_square2(ctx);
+    glUniform2f(ctx->stars.offset_loc, 0.005 * ctx->squares->pos[idx].x+ 18.0,0.005 * ctx->squares->pos[idx].y + 10.0);
+    render_square2(ctx); 
   }
-  
   //
   glUseProgram(ctx->geoshader);
   

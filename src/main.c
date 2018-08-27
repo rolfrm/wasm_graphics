@@ -50,8 +50,21 @@ vec2 get_drawing_size(){
   return vec2_new(1000,700);
 }
 
-int main(){
 
+float rnd(vec2 x){
+  int a = (int)(x.x * 100);
+  int b = (int)(x.y * 100);
+      
+   int c = 43051 + a * 6967 + a * a * 17383 + a * a * a * 29443 + a * a * a * a * 38921;
+   int d =  6967 + b * 43051 + b * b * 29443 + b * b * b * 17383 + b * b * b * b * 38921;
+   return (float)((c * d) % 10000) / 10000.0;   
+}
+
+
+int main(){
+  //for(int i = 0; i < 100; i++)
+  //printf("%f\n", rnd(vec2_new(1,i)));
+  //return 0;
   glfwInit();
   //GLFWmonitor * monitor = glfwGetPrimaryMonitor();
   //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
