@@ -381,11 +381,12 @@ void load_level(context * ctx, int n){
   }else if(n == 8){
     load_level_data(ctx, (char *)level4_data, level4_data_len);
   }else if(n == 9){
-    load_level_data(ctx, (char *)level4_data, level5_data_len);
+    load_level_data(ctx, (char *)level5_data, level5_data_len);
   }else if(n == 10){
-    load_level_data(ctx, (char *)level4_data, level6_data_len);
+    //load_level_file(ctx, 6);
+    load_level_data(ctx, (char *)level6_data, level6_data_len);
   }else if(n == 11){
-    load_level_data(ctx, (char *)level4_data, level7_data_len);
+    load_level_data(ctx, (char *)level7_data, level7_data_len);
   }else{
     printf("Game won: %i\n", n);
     //exit(0);
