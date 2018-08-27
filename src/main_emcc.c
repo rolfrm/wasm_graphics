@@ -18,6 +18,7 @@
 
 #include "squares.h"
 #include "particles.h"
+#include "sin_state.h"
 #include "main.h"
 
 #define ASSERT(x) if(x){}

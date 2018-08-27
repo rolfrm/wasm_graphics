@@ -56,9 +56,9 @@ int main(){
   //GLFWmonitor * monitor = glfwGetPrimaryMonitor();
   //const GLFWvidmode* mode = glfwGetVideoMode(monitor);
   
-  win = glfwCreateWindow(700, 700, "", NULL, NULL);
+  win = glfwCreateWindow(512, 512, "my window", NULL, NULL);
   glfwMakeContextCurrent(win);
-  glfwSwapInterval(1);
+  //glfwSwapInterval(1);
   glfwSetMouseButtonCallback(win, mouse_button_callback);
     
   ASSERT(glewInit() == GLEW_OK);
@@ -77,7 +77,6 @@ int main(){
   ctx->win_width = 0;
   ctx->sin_file = (char *) "sin_file";
   while(glfwWindowShouldClose(ctx->win) == false){
-    //iron_usleep(100000);
     mainloop(ctx);
   }
     

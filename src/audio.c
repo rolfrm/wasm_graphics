@@ -5,13 +5,16 @@
 
 int samplerate = 44100;
 void sinefilter(float * out, int sample, audiothing * thing){
-  float f = ((float *)&thing->data)[0];
+  float * fd = (float *) &thing->data;
+  float f = fd[0];
   out[sample] += sin((float)(sample / (float) samplerate) * f * 2 * 3.14) * 0.5;
 }
 
 audiothing * create_sine(float freq){
+  
   audiothing * thing = calloc(sizeof(audiothing), 1);
-  ((float *)&thing->data)[0] = freq;
+  float * fd = (float *)&thing->data;
+  fd[0] = freq;
   thing->f = sinefilter;
   return thing;
 }
@@ -21,6 +24,7 @@ typedef struct{
 }asdr;
 
 void asdrfilter(float * out, int sample, audiothing * thing){
+  
   float time = (float)((float)sample / (float) samplerate);
   if(thing->sub == NULL) return;
   thing->sub->f(out, sample, thing->sub);

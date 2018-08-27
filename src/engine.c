@@ -21,8 +21,8 @@
 #include <utime.h>
 #include <sys/stat.h>
 
-#include "flat_geom.c"
-#include "starry.c"
+#include "flat_geom.shader.c"
+#include "starry.shader.c"
 #include "squares.h"
 #include "squares.c"
 #include "particles.h"
@@ -33,6 +33,9 @@
 #include "utils.h"
 #include "audio.h"
 #include "level1.c"
+#include "level2.c"
+#include "level3.c"
+#include "level4.c"
 
 __thread int logd_enable = false;
 void on_req_fullscreen();
@@ -60,15 +63,17 @@ i32 make_shader(u32 kind, char * source, u32 length){
   }else{
     GLint infoLogLength = 0;
     glGetShaderiv(ref, GL_INFO_LOG_LENGTH, &infoLogLength);
-    char log[infoLogLength];
-    memset(log, 0, sizeof(log));
-    glGetShaderInfoLog(ref, infoLogLength, NULL, log);
-    printf("Shader Info log:\n **************************\n");
-    printf("%s",log);
-    printf("\n***************************\n");
-    //printf("Source:\n");
-    //printf("%s", source);
-    //printf("\n***************************\n");
+    if(infoLogLength > 0){
+      char log[infoLogLength];
+      memset(log, 0, sizeof(log));
+      glGetShaderInfoLog(ref, infoLogLength, NULL, log);
+      printf("Shader Info log:\n **************************\n");
+      printf("%s",log);
+      printf("\n***************************\n");
+      //printf("Source:\n");
+      //printf("%s", source);
+      //printf("\n***************************\n");
+    }
   }
 
   return ref;
@@ -361,11 +366,15 @@ void load_level(context * ctx, int n){
   }else if(n == 5){
     load_level_data(ctx, (char *)level1_data, level1_data_len);
   }else if(n == 6){
-    load_level_file(ctx,2);
+    load_level_data(ctx, (char *)level2_data, level2_data_len);
+    //load_level_file(ctx,2);
   }else if(n == 7){
-    load_level_file(ctx,3);
+    load_level_data(ctx, (char *)level3_data, level3_data_len);
+    //load_level_file(ctx,3);
   }else if(n == 8){
-    load_level_file(ctx,4);
+    load_level_data(ctx, (char *)level4_data, level4_data_len);
+    
+    //load_level_file(ctx,4);
   }else{
     load_level_file(ctx,4);
     ctx->current_level = 8;
@@ -408,7 +417,6 @@ u32 create_soundf(float * samples, int count){
 }
 
 
-
 u32 load_shader_program(const char * vscode, int vslen, const char * fscode, int fslen){
   GLuint vs = make_shader(GL_VERTEX_SHADER, (char *) vscode, vslen);
   GLuint fs = make_shader(GL_FRAGMENT_SHADER, (char *) fscode, fslen);
@@ -416,7 +424,7 @@ u32 load_shader_program(const char * vscode, int vslen, const char * fscode, int
   program = glCreateProgram();
   glAttachShader(program, vs);
   glAttachShader(program, fs);
-  glBindAttribLocation(program, 0, "pos");
+  //glBindAttribLocation(program, 0, "pos");
   glLinkProgram(program);
   return program;
 }
@@ -461,7 +469,7 @@ void initialize(context * ctx){
   ctx->sin_states = sin_state_create(ctx->sin_file);
   ctx->current_vbo = -1;
 
-  load_level(ctx, 8);
+  load_level(ctx, 1);
   ALCdevice* device = alcOpenDevice(NULL);
   
   printf("ALC DEVICE: %p\n", device);
@@ -560,7 +568,7 @@ void initialize(context * ctx){
 void render_square(context * ctx, vec2 pos, vec2 size){
   if(ctx->current_vbo != ctx->square){
     glBindBuffer(GL_ARRAY_BUFFER, ctx->square);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), 0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(0);
     ctx->current_vbo = ctx->square;
     ctx->vbo_points = 4;
@@ -579,7 +587,7 @@ void render_square(context * ctx, vec2 pos, vec2 size){
 void render_square2(context * ctx){
   if(ctx->current_vbo != ctx->square){
     glBindBuffer(GL_ARRAY_BUFFER, ctx->square);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), 0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(0);
     ctx->current_vbo = ctx->square;
     ctx->vbo_points = 4;

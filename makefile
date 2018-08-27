@@ -1,9 +1,12 @@
-OPT = -g3 -Og
-LIB_SOURCES1 =  main.c engine.c utils.c audio.c
+OPT = -g0 -O3
+LIB_SOURCES1 = main.c engine.c utils.c audio.c 
+LEVEL_SOURCES = level1.data level2.data level3.data level4.data
+
 LIB_SOURCES = $(addprefix src/, $(LIB_SOURCES1))
 CC = gcc
 TARGET = run.exe
-LIB_OBJECTS =$(LIB_SOURCES:.c=.o) 
+LIB_OBJECTS =$(LIB_SOURCES:.c=.o)
+LEVEL_CS = $(addprefix src/, $(LEVEL_SOURCES:.data=.c))
 LDFLAGS= -L. $(OPT) -Wextra 
 LIBS= -lGL -lGLEW -lglfw -lm -liron -lopenal -licydb
 ALL= $(TARGET)
@@ -14,20 +17,22 @@ $(TARGET): $(LIB_OBJECTS)
 
 all: $(ALL)
 
-.c.o: $(HEADERS)
+.c.o: $(HEADERS) $(LEVEL_CS)
 	$(CC) $(CFLAGS) $< -o $@ -MMD -MF $@.depends
-src/engine.o: src/flat_geom.o src/starry.o
-src/flat_geom.c: src/flat_geom.vs src/flat_geom.fs
-	echo building shader!
-	xxd -i src/flat_geom.vs > src/flat_geom.c
-	xxd -i src/flat_geom.fs >> src/flat_geom.c
-src/starry.c: src/starry.vs src/starry.fs
-	echo building starry shader!
-	xxd -i src/starry.vs > src/starry.c
-	xxd -i src/starry.fs >> src/starry.c		
+src/engine.o: src/flat_geom.shader.c src/starry.shader.c $(LEVEL_CS) 
+
+src/flat_geom.shader.c: src/flat_geom.vs src/flat_geom.fs
+	xxd -i src/flat_geom.vs > src/flat_geom.shader.c
+	xxd -i src/flat_geom.fs >> src/flat_geom.shader.c
+src/starry.shader.c: src/starry.vs src/starry.fs
+	xxd -i src/starry.vs > src/starry.shader.c
+	xxd -i src/starry.fs >> src/starry.shader.c
+src/level%.c: level%.data
+	xxd -i $< > $@
+
 depend: h-depend
 clean:
-	rm -f $(LIB_OBJECTS) $(ALL) src/*.o.depends
+	rm -f $(LIB_OBJECTS) $(ALL) src/*.o.depends src/*.o src/level*.c src/*.shader.c 
 .PHONY: test
 test: $(TARGET)
 	make -f makefile.compiler
