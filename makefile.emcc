@@ -13,12 +13,12 @@ LIBS= -lglfw3 -lopenal ../iron/libiron.bc ../libicydb/libicydb.bc
 CFLAGS = -std=c11 $(OPT) -Wall -Wextra -Werror=implicit-function-declaration -Wformat=0 -D_GNU_SOURCE  -fdiagnostics-color -s USE_GLFW=3 -s WASM=1 -I.. -I../libicydb/include 
 all: $(TARGET)
 $(TARGET): $(OBJECTS) makefile.emcc
-	echo building $(OBJECTS)
-	$(CC) $(CFLAGS)  $(OBJECTS) $(LIBS) -o $@ --verbose
+	$(CC) $(CFLAGS) $(OBJECTS) $(LIBS) -o $@ --verbose
 
 %.bc: %.c $(HEADERS)
 	$(CC) -c  $(CFLAGS) $< -o $@ -MMD -MF $@.depends
-src/engine.o: src/flat_geom.shader.c src/starry.c $(LEVEL_CS)
+src/engine.bc: src/flat_geom.shader.c src/starry.shader.c $(LEVEL_CS)
+
 src/flat_geom.shader.c: src/flat_geom.vs src/flat_geom.fs
 	xxd -i src/flat_geom.vs > src/flat_geom.shader.c
 	xxd -i src/flat_geom.fs >> src/flat_geom.shader.c
