@@ -40,6 +40,10 @@
 #include "level6.c"
 #include "level7.c"
 
+void on_jumped(context * game){
+  game->jump = 10;
+}
+
 __thread int logd_enable = false;
 void on_req_fullscreen();
 unsigned query_sample_rate_of_audiocontexts();
@@ -938,8 +942,10 @@ void mainloop(context * ctx)
       }
       alSourcePlay(ctx->jmp_sound);
     }
+    ctx->jump = 0;
   }
-  ctx->jump = false;
+  if(ctx->jump > 0)
+    ctx->jump--;
 
 
 

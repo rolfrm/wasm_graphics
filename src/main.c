@@ -32,9 +32,16 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
   UNUSED(button);UNUSED(mods);
   if(action == GLFW_PRESS){
     context * ctx= glfwGetWindowUserPointer(window);
-    ctx->jump = true;
+    on_jumped(ctx);
+  }    
+}
+void key_callback(GLFWwindow * window, int key, int scancode, int action, int mods){
+  UNUSED(scancode); UNUSED(mods);
+  if(action == GLFW_PRESS && key == GLFW_KEY_SPACE){
+    context * ctx= glfwGetWindowUserPointer(window);
+    on_jumped(ctx);
+
   }
-    
 }
 
 unsigned query_sample_rate_of_audiocontexts(){
@@ -73,7 +80,7 @@ int main(){
   glfwMakeContextCurrent(win);
   //glfwSwapInterval(1);
   glfwSetMouseButtonCallback(win, mouse_button_callback);
-    
+  glfwSetKeyCallback(win, key_callback);
   ASSERT(glewInit() == GLEW_OK);
   //glViewport(512,512,512,512);
 

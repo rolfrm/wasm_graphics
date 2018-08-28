@@ -52,8 +52,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
   ctx->jmp_mode = GAME_MODE_PRESS;
   UNUSED(button);UNUSED(mods);
   if(action == GLFW_PRESS){
-
-    ctx->jump = true;
+    on_jumped(ctx);
     //on_req_fullscreen();
 
   }

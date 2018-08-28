@@ -25,8 +25,7 @@ typedef struct{
   int geom1_pts;
   int geom1;
 
-  int square;
-  
+  int square;  
 
   int current_vbo;
   int vbo_points;
@@ -68,7 +67,7 @@ typedef struct{
   u32 lose_sound;
   char * particles_file;
 
-  bool jump;
+  int jump;
 
   int win_height, win_width;
 
@@ -89,3 +88,4 @@ typedef enum {
 
 void mainloop(context * ctx);
 vec2 get_drawing_size();
+void on_jumped(context * game);
