@@ -211,8 +211,23 @@ void load_level_data(context * ctx, const char * filedata, size_t len){
   load_file_lines(filedata, len, load_level_data_f, &dat);
 }
 
+bool level_file_changed(context * ctx, int fileid){
+  char file[245];
+  sprintf(file, "level%i.data", fileid);
+
+  char scmd[1025];
+  sprintf(scmd, "cat %s", file);
+  u64 stamp = get_file_time2(file);
+  if(ctx->file == fileid && stamp == ctx->file_modify){
+    return false;
+  }else if(ctx->file > 0){
+    return true;
+  }
+  return false;
+
+}
+
 void load_level_file(context * ctx, int fileid){
-  UNUSED(ctx);
   FILE *cmd;
   char result[1024];
   char file[245];
@@ -246,8 +261,8 @@ void load_level_file(context * ctx, int fileid){
   while (fgets(result, sizeof(result), cmd)) {
     load_level_data_f(result, &dat);
 
-    }
-  //exit(0);
+  }
+  fclose(cmd);
 
 }
 
@@ -356,7 +371,7 @@ void load_level0(context * ctx){
 
 
 // level progression that is not totally strange.
-int alt_level_prog[] = {0, 1, 2, 9, 8, 3, 5, 4, 6, 10, 11, 7};  
+int alt_level_prog[] = {0, 1, 2, 9, 8, 3, 5, 4, 6, 10, 12, 13, 11, 7};  
 
 void load_level(context * ctx, int n){
   ctx->current_level = n;
@@ -391,11 +406,31 @@ void load_level(context * ctx, int n){
     load_level_data(ctx, (char *)level6_data, level6_data_len);
   }else if(n == 11){
     load_level_data(ctx, (char *)level7_data, level7_data_len);
+  }else if(n == 12){
+    load_level_file(ctx, 8);
+  }else if(n == 13){
+    load_level_file(ctx, 9);
   }else{
     printf("Game won: %i\n", n);
     //exit(0);
   }
+  { // updated sinus movements
+    var tsin = ctx->sin_states;
+    size_t indexes[tsin->count];
+    squares_lookup(ctx->squares, tsin->id + 1, indexes, tsin->count);
+    for(size_t _i = 0; _i < tsin->count; _i++){
 
+      size_t i = _i + 1;
+      float freq = tsin->freq[i];
+      
+      float cphase = tsin->phase[i];
+      
+      var sqindex = indexes[_i];
+      vec2 d =tsin->dir[i];
+      printf("correcting...\n");
+      ctx->squares->pos[sqindex] = vec2_add(ctx->squares->pos[sqindex], vec2_scale(d, sin(cphase * freq)));   
+    }
+  }
 }
 
 u32 create_sound(short * samples, int count){
@@ -668,7 +703,36 @@ void mainloop(context * ctx)
     initialize(ctx);
     
   }
- 
+
+  { // updated sinus movements
+    var tsin = ctx->sin_states;
+    size_t indexes[tsin->count];
+    squares_lookup(ctx->squares, tsin->id + 1, indexes, tsin->count);
+    for(size_t _i = 0; _i < tsin->count; _i++){
+
+      size_t i = _i + 1;
+      float freq = tsin->freq[i];
+      
+      float cphase = tsin->phase[i];
+      
+      var sqindex = indexes[_i];
+      vec2 d =tsin->dir[i];
+
+      ctx->squares->pos[sqindex] = vec2_sub(ctx->squares->pos[sqindex], vec2_scale(d, sin(cphase * freq)));
+      //vec2_print(ctx->squares->pos[sqindex]);
+
+      if(!ctx->paused)
+	cphase = tsin->phase[i] = cphase + 0.01;
+      float dif = sin(cphase * freq);
+
+      
+      ctx->squares->pos[sqindex] = vec2_add(ctx->squares->pos[sqindex], vec2_scale(d, dif));
+      //vec2_print(ctx->squares->pos[sqindex]);
+      //vec2_print(d);printf("Phase: %f\n", dif);
+      
+    }
+  }
+  
   alcMakeContextCurrent(ctx->alc_context);
   vec2 winsize = get_drawing_size();
   int nw = winsize.x;
@@ -952,29 +1016,13 @@ void mainloop(context * ctx)
   ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.06));
   }
   
-  {
-    var tsin = ctx->sin_states;
-    size_t indexes[tsin->count];
-    squares_lookup(ctx->squares, tsin->id + 1, indexes, tsin->count);
-    for(size_t _i = 0; _i < tsin->count; _i++){
 
-      size_t i = _i + 1;
-      float cphase = tsin->phase[i];
-      float freq = tsin->freq[i];
-      vec2 d =tsin->dir[i];
-      float nphase = cphase + 0.01;
-      tsin->phase[i] = nphase;
-      float dif = sin(nphase * freq) - sin(cphase * freq);
-
-      var sqindex = indexes[_i];
-      ctx->squares->pos[sqindex] = vec2_add(ctx->squares->pos[sqindex], vec2_scale(d, dif));
-    }
-  }
   //printf("Player: %i",ctx->player_stick); vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
 
   ctx->game_time += 0.01;
-  if(ctx->file > 0)
-    load_level_file(ctx,ctx->file);
+  if(ctx->file > 0 && level_file_changed(ctx,ctx->file)){
+    load_level(ctx, ctx->current_level); return;
+  }
   //ctx->q += 0.001;
 
   if(r){
