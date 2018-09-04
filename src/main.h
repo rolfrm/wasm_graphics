@@ -74,6 +74,11 @@ typedef struct{
   mouse_mode jmp_mode;
   sin_state * sin_states;
   char * sin_file;
+  float delta_t;
+  u64 last_timestamp;
+  event_table * evt_file;
+  bool record_events;
+  const char * record_file;
 }context;
 
 

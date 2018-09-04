@@ -12,6 +12,7 @@
 #include <iron/math.h>
 #include <iron/utils.h>
 #include <iron/log.h>
+#include <iron/time.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -25,6 +26,8 @@
 #include "starry.shader.c"
 #include "squares.h"
 #include "squares.c"
+#include "event_table.h"
+
 #include "particles.h"
 #include "particles.c"
 #include "sin_state.h"
@@ -206,7 +209,7 @@ void load_level_data(context * ctx, const char * filedata, size_t len){
   ctx->player_current_square = 2;
   ctx->player_current_direction = vec2_new(0.1,0);
   ctx->player_stick = true;
-  ctx->player_gravity = 1;
+  ctx->player_gravity = 10;
   level_load_data dat = {.id = 1, .ctx = ctx};
   load_file_lines(filedata, len, load_level_data_f, &dat);
 }
@@ -255,7 +258,7 @@ void load_level_file(context * ctx, int fileid){
   if(!reload)
     ctx->player_current_direction = vec2_new(0.1,0);
   ctx->player_stick = true;
-  ctx->player_gravity = 1;
+  ctx->player_gravity = 10;
   
   level_load_data dat = {.id = 1, .ctx = ctx};
   while (fgets(result, sizeof(result), cmd)) {
@@ -281,7 +284,7 @@ void load_level4(context * ctx){
   ctx->player_current_square = 2;
   ctx->player_current_direction = vec2_new(0.1,0);
   ctx->player_stick = true;
-  ctx->player_gravity = 1;    
+  ctx->player_gravity = 10;    
 }
 
 void load_level3(context * ctx){
@@ -303,7 +306,7 @@ void load_level3(context * ctx){
   ctx->player_current_square = 2;
   ctx->player_current_direction = vec2_new(0.1,0);
   ctx->player_stick = true;
-  ctx->player_gravity = 1;  
+  ctx->player_gravity = 10;  
 
 }
 
@@ -325,7 +328,7 @@ void load_level2(context * ctx){
   ctx->player_current_square = 2;
   ctx->player_current_direction = vec2_new(-1,0);
   ctx->player_stick = true;
-  ctx->player_gravity = 1;
+  ctx->player_gravity = 10;
 }
 
 void load_level1(context * ctx){
@@ -343,7 +346,7 @@ void load_level1(context * ctx){
   ctx->player_current_square = 2;
   ctx->player_current_direction = vec2_new(0.1,0);
   ctx->player_stick = true;
-  ctx->player_gravity = 1;
+  ctx->player_gravity = 10;
   
 }
 
@@ -365,7 +368,7 @@ void load_level0(context * ctx){
   ctx->player_current_square = 2;
   ctx->player_current_direction = vec2_new(1,0);
   ctx->player_stick = true;
-  ctx->player_gravity = 1;
+  ctx->player_gravity = 10;
   
 }
 
@@ -530,8 +533,7 @@ void initialize(context * ctx){
   ctx->particles = particles_create(ctx->particles_file);
   ctx->sin_states = sin_state_create(ctx->sin_file);
   ctx->current_vbo = -1;
-
-  load_level(ctx, 0);
+  //load_level(ctx, 0);
   ALCdevice* device = alcOpenDevice(NULL);
   
   printf("ALC DEVICE: %p\n", device);
@@ -550,7 +552,8 @@ void initialize(context * ctx){
   alListenerfv(AL_POSITION, listenerPos);
   alListenerfv(AL_VELOCITY, listenerVel);
   alListenerfv(AL_ORIENTATION, listenerOri);
-
+  alListenerf(AL_GAIN, -100.0);
+  
   
   int size = 4000;
   float * buffer = malloc(size * sizeof(float));
@@ -623,7 +626,12 @@ void initialize(context * ctx){
   
   
   
-  alSourcef (ctx->lose_sound, AL_GAIN, 0.25);
+  alSourcef (ctx->lose_sound, AL_GAIN, 0.0);
+  alSourcef (ctx->win_sound, AL_GAIN, 0.0);
+  alSourcef (ctx->jmp_sound, AL_GAIN, 0.0);
+
+  
+  
   alcSuspendContext(context);
 }
 
@@ -698,12 +706,14 @@ void particle_push(context * ctx, vec2 pos, vec2 dir, float size, float lifetime
 void mainloop(context * ctx)
 {
   
+  u64 ts = timestamp();
   
+  float timestep = ctx->delta_t;
+  printf("Time: %f\n", timestep);
   if(!ctx->initialized){
     initialize(ctx);
-    
+    ctx->last_timestamp = ts;
   }
-
   { // updated sinus movements
     var tsin = ctx->sin_states;
     size_t indexes[tsin->count];
@@ -722,7 +732,7 @@ void mainloop(context * ctx)
       //vec2_print(ctx->squares->pos[sqindex]);
 
       if(!ctx->paused)
-	cphase = tsin->phase[i] = cphase + 0.01;
+	cphase = tsin->phase[i] = cphase + timestep;
       float dif = sin(cphase * freq);
 
       
@@ -833,9 +843,9 @@ void mainloop(context * ctx)
     var lifetime = particles->lifetime[i] * 5;
     glUniform4f(ctx->color_uniform_loc, 1,1,0,lifetime < 1 ? lifetime : 1);
     render_square(ctx, particles->pos[i+1],vec2_new1(particles->size[i+1]));
-    particles->pos[i] = vec2_add(particles->pos[i], vec2_scale(particles->dir[i], 0.01));
+    particles->pos[i] = vec2_add(particles->pos[i], vec2_scale(particles->dir[i], timestep));
     
-    particles->lifetime[i] -= 0.01;
+    particles->lifetime[i] -= timestep;
     if(particles->lifetime[i] < 0){
       to_remove++;
     }
@@ -901,13 +911,13 @@ void mainloop(context * ctx)
     vec2 dd = vec2_sub(p2, p1);
     if(dist.y > -s1.y && !ctx->player_stick ){
       // no vertical collision
-      ctx->player_current_direction.y += SIGN(dd.y) * ctx->player_gravity * 0.5;
+      ctx->player_current_direction.y += SIGN(dd.y) * ctx->player_gravity * timestep;
     }
     
     if(dist.x > -s1.x && !ctx->player_stick){
       
       // no vertical collision
-      ctx->player_current_direction.x += SIGN(dd.x) * ctx->player_gravity * 0.5;
+      ctx->player_current_direction.x += SIGN(dd.x) * ctx->player_gravity * timestep;
     }
     //float l = vec2_len(ctx->player_current_direction);
     //if(l < 1)
@@ -920,14 +930,28 @@ void mainloop(context * ctx)
     }
     
   }
-  float l = vec2_len(ctx->player_current_direction);
-  if(l < 1 && ctx->player_stick){
 
-    ctx->player_current_direction = vec2_scale(ctx->player_current_direction, 1.1 );
+  float nominal =  0.01666 / timestep;
+  printf("nominal %f\n", nominal);
+  
+  float l = vec2_len(ctx->player_current_direction);
+  float correction = 1.0;
+   
+  if(l < 1){
+    correction = powf(1.03, nominal);
+    if(correction * l > 1)
+      correction = 1 / l;
+    
   }
   if( l > 1){
-    ctx->player_current_direction = vec2_scale(ctx->player_current_direction, 0.9 );
+    correction = powf(1.03, -nominal);
+    if(correction * l < 1)
+      correction = 1 / l;
   }
+
+  
+  printf("Correction: %f %f\n", correction, l);
+  ctx->player_current_direction = vec2_scale(ctx->player_current_direction, correction);
 
   float mindist = 10000;
   int minid = -1;
@@ -974,7 +998,7 @@ void mainloop(context * ctx)
 	    }
 	  }
 	  //ctx->player_current_direction = vec2_normalize(ctx->player_current_direction);
-	  ctx->player_gravity = 1;
+	  ctx->player_gravity = 40;
 	  ctx->player_stick = true;
 	}
       }
@@ -983,7 +1007,7 @@ void mainloop(context * ctx)
   
   ctx->player_current_square = minid;
   if(ctx->jump && ctx->player_stick){
-
+    printf("JUMP\n\n\n");
     vec2 dist = square_distance(ctx->squares->pos[idx2],ctx->squares->pos[idx],ctx->squares->size[idx2],ctx->squares->size[idx]);
     vec2 p2 = ctx->squares->pos[idx2];
     vec2 p1 = ctx->squares->pos[idx];
@@ -991,16 +1015,22 @@ void mainloop(context * ctx)
     vec2 da = vec2_new(-d.y, d.x);
     float ang = SIGN( vec2_mul_inner(ctx->player_current_direction, da));
 
-    
-    if(MIN(dist.x, dist.y) < -0.00001){
-      mat2 rot = mat2_rotation(ang * PI/4);
+    if(MIN(dist.x, dist.y) < -0.00001){ 
+      mat2 rot = mat2_rotation(ang * PI/3.7);
       vec2 jmp = mat2_mul_vec2(rot, ctx->player_current_direction);
+      float vel = vec2_len(ctx->player_current_direction);
+      
       ctx->player_current_direction = jmp;
-      ctx->player_gravity = 0.05;
+      if(vel <= 0.0){
+
+      }else if(vel < 0.5){
+	//ctx->player_current_direction = vec2_scale(vec2_normalize(ctx->player_current_direction), 0.5);
+      }
+	
+	 
+      ctx->player_gravity = 2.9;
       ctx->player_stick = false;
       var pos = ctx->squares->pos[idx];
-      ctx->squares->pos[idx] = vec2_add(pos, vec2_scale(ctx->player_current_direction,0.03));
-      ctx->squares->pos[idx] = vec2_add(pos, vec2_scale(ctx->player_current_direction,0.03));
       for(int i = 0; i < 10; i++){
 	particle_push(ctx, pos, vec2_new(cos(2 * PI * randf32()), sin(2 * PI *randf32())), 0.04, 0.4, 1);
       }
@@ -1013,13 +1043,13 @@ void mainloop(context * ctx)
 
 
 
-  ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.06));
+  ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,timestep * 3.5));
   }
   
 
-  //printf("Player: %i",ctx->player_stick); vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
+  printf("Player: %i",ctx->player_stick); vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
 
-  ctx->game_time += 0.01;
+  ctx->game_time += timestep;
   if(ctx->file > 0 && level_file_changed(ctx,ctx->file)){
     load_level(ctx, ctx->current_level); return;
   }
@@ -1036,5 +1066,11 @@ void mainloop(context * ctx)
     printf("%f %f\n", dsize.x, dsize.y);
   }
   ctx->paused_cnt--;
-  
+
+  u64 delta = ts - ctx->last_timestamp;
+  ctx->last_timestamp = ts;
+  float delta_t = ((float)delta) * 1e-6;
+  ctx->delta_t = delta_t;
+  iron_sleep(0.01);
+    
 }

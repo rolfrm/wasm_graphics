@@ -14,6 +14,7 @@
 #include <iron/time.h>
 #include <iron/utils.h>
 #define ASSERT(x) if(x){}
+#include "event_table.h"
 #include "squares.h"
 #include "particles.h"
 #include "sin_state.h"
@@ -78,7 +79,7 @@ int main(){
   
   win = glfwCreateWindow(512, 512, "my window", NULL, NULL);
   glfwMakeContextCurrent(win);
-  //glfwSwapInterval(1);
+  glfwSwapInterval(0);
   glfwSetMouseButtonCallback(win, mouse_button_callback);
   glfwSetKeyCallback(win, key_callback);
   ASSERT(glewInit() == GLEW_OK);
@@ -96,6 +97,8 @@ int main(){
   ctx->win_height = 0;
   ctx->win_width = 0;
   ctx->sin_file = (char *) "sin_file";
+  ctx->record_events = true;
+  ctx->record_file = "events_record";
   while(glfwWindowShouldClose(ctx->win) == false){
     mainloop(ctx);
   }
