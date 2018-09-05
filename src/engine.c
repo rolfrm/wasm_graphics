@@ -533,7 +533,7 @@ void initialize(context * ctx){
   ctx->particles = particles_create(ctx->particles_file);
   ctx->sin_states = sin_state_create(ctx->sin_file);
   ctx->current_vbo = -1;
-  //load_level(ctx, 0);
+  load_level(ctx, 11);
   ALCdevice* device = alcOpenDevice(NULL);
   
   printf("ALC DEVICE: %p\n", device);
@@ -937,13 +937,13 @@ void mainloop(context * ctx)
   float correction = 1.0;
    
   if(l < 1 && ctx->player_stick){
-    correction = powf(1.03, nominal);
+    correction = powf(1.05, nominal);
     if(correction * l > 1)
       correction = 1 / l;
     
   }
   if( l > 1){
-    correction = powf(1.03, -nominal);
+    correction = powf(1.05, -nominal);
     if(correction * l < 1)
       correction = 1 / l;
   }
@@ -1060,6 +1060,6 @@ void mainloop(context * ctx)
   ctx->last_timestamp = ts;
   float delta_t = ((float)delta) * 1e-6;
   ctx->delta_t = delta_t;
-  iron_sleep(0.01);
+  iron_sleep(0.001);
     
 }
