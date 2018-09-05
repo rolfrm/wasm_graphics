@@ -430,7 +430,7 @@ void load_level(context * ctx, int n){
       
       var sqindex = indexes[_i];
       vec2 d =tsin->dir[i];
-      printf("correcting...\n");
+      //printf("correcting...\n");
       ctx->squares->pos[sqindex] = vec2_add(ctx->squares->pos[sqindex], vec2_scale(d, sin(cphase * freq)));   
     }
   }
@@ -709,7 +709,7 @@ void mainloop(context * ctx)
   u64 ts = timestamp();
   
   float timestep = ctx->delta_t;
-  printf("Time: %f\n", timestep);
+  //printf("Time: %f\n", timestep);
   if(!ctx->initialized){
     initialize(ctx);
     ctx->last_timestamp = ts;
@@ -748,7 +748,7 @@ void mainloop(context * ctx)
   int nw = winsize.x;
   int nh = winsize.y;
   if(ctx->win_height != nh || ctx->win_width != nw){
-    printf("NEW WINDOW SIZE: %i %i\n", nw, nh);
+    //printf("NEW WINDOW SIZE: %i %i\n", nw, nh);
   
     glfwSetWindowSize(ctx->win, nw, nh);
     ctx->win_height = nh;
@@ -932,12 +932,11 @@ void mainloop(context * ctx)
   }
 
   float nominal =  0.01666 / timestep;
-  printf("nominal %f\n", nominal);
   
   float l = vec2_len(ctx->player_current_direction);
   float correction = 1.0;
    
-  if(l < 1){
+  if(l < 1 && ctx->player_stick){
     correction = powf(1.03, nominal);
     if(correction * l > 1)
       correction = 1 / l;
@@ -948,9 +947,6 @@ void mainloop(context * ctx)
     if(correction * l < 1)
       correction = 1 / l;
   }
-
-  
-  printf("Correction: %f %f\n", correction, l);
   ctx->player_current_direction = vec2_scale(ctx->player_current_direction, correction);
 
   float mindist = 10000;
@@ -984,9 +980,11 @@ void mainloop(context * ctx)
 	}else if(type == SQUARE_BLOCK){
 	  if(dist.x < dist.y){
 	    // collided top/bottom.
-	    ctx->player_current_direction.y = 0;
+	    if(fabs(ctx->player_current_direction.x) > 0) 
+	      ctx->player_current_direction.y = 0;
 	  }else{
-	    ctx->player_current_direction.x = 0;
+	    if(fabs(ctx->player_current_direction.y) > 0) 
+	      ctx->player_current_direction.x = 0;
 	  }
 	  
 	  if(vec2_len(ctx->player_current_direction) < 0.0001){
@@ -995,7 +993,7 @@ void mainloop(context * ctx)
 	      //ctx->player_current_direction.x = 1;
 	    }else{
 	      //ctx->player_current_direction.y = 1;
-	    }
+	    }    
 	  }
 	  //ctx->player_current_direction = vec2_normalize(ctx->player_current_direction);
 	  ctx->player_gravity = 40;
@@ -1016,19 +1014,12 @@ void mainloop(context * ctx)
     float ang = SIGN( vec2_mul_inner(ctx->player_current_direction, da));
 
     if(MIN(dist.x, dist.y) < -0.00001){ 
-      mat2 rot = mat2_rotation(ang * PI/3.7);
+      mat2 rot = mat2_rotation(ang * PI/4.0);
       vec2 jmp = mat2_mul_vec2(rot, ctx->player_current_direction);
-      float vel = vec2_len(ctx->player_current_direction);
       
       ctx->player_current_direction = jmp;
-      if(vel <= 0.0){
-
-      }else if(vel < 0.5){
-	//ctx->player_current_direction = vec2_scale(vec2_normalize(ctx->player_current_direction), 0.5);
-      }
-	
-	 
-      ctx->player_gravity = 2.9;
+      ctx->squares->pos[idx] = vec2_add(ctx->squares->pos[idx], vec2_scale(ctx->player_current_direction,0.1));
+      ctx->player_gravity = 1.5;
       ctx->player_stick = false;
       var pos = ctx->squares->pos[idx];
       for(int i = 0; i < 10; i++){
@@ -1047,7 +1038,7 @@ void mainloop(context * ctx)
   }
   
 
-  printf("Player: %i",ctx->player_stick); vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
+  //printf("Player: %i",ctx->player_stick); vec2_print(ctx->squares->pos[idx]); vec2_print(ctx->player_current_direction); printf("\n");
 
   ctx->game_time += timestep;
   if(ctx->file > 0 && level_file_changed(ctx,ctx->file)){
@@ -1062,8 +1053,6 @@ void mainloop(context * ctx)
   if(enter && ctx->paused_cnt < 0){
     ctx->paused = !ctx->paused;
     ctx->paused_cnt = 20;
-    vec2 dsize = get_drawing_size();
-    printf("%f %f\n", dsize.x, dsize.y);
   }
   ctx->paused_cnt--;
 
