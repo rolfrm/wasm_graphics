@@ -19,6 +19,7 @@ typedef struct{
   int geoshader;
   int initialized;
   int color_uniform_loc;
+  int color2_uniform_loc;
   int tform_loc;
   int size_loc;
 

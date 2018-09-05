@@ -505,6 +505,7 @@ void initialize(context * ctx){
   var program = load_shader_program((char *)src_flat_geom_vs, src_flat_geom_vs_len,(char *)src_flat_geom_fs, src_flat_geom_fs_len);
   ctx->geoshader = program;
   ctx->color_uniform_loc = glGetUniformLocation(program, "color");
+  ctx->color2_uniform_loc = glGetUniformLocation(program, "color2");
   ctx->tform_loc = glGetUniformLocation(program, "tform");
 
   ctx->stars.program = load_shader_program((char *)src_starry_vs, src_starry_vs_len,(char *)src_starry_fs, src_starry_fs_len);
@@ -533,7 +534,7 @@ void initialize(context * ctx){
   ctx->particles = particles_create(ctx->particles_file);
   ctx->sin_states = sin_state_create(ctx->sin_file);
   ctx->current_vbo = -1;
-  load_level(ctx, 11);
+  load_level(ctx, 0);
   ALCdevice* device = alcOpenDevice(NULL);
   
   printf("ALC DEVICE: %p\n", device);
@@ -635,7 +636,7 @@ void initialize(context * ctx){
   alcSuspendContext(context);
 }
 
-void render_square(context * ctx, vec2 pos, vec2 size){
+void render_square(context * ctx, vec2 pos, vec2 size, bool line){
   if(ctx->current_vbo != ctx->square){
     glBindBuffer(GL_ARRAY_BUFFER, ctx->square);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
@@ -649,8 +650,11 @@ void render_square(context * ctx, vec2 pos, vec2 size){
   mat3 m3 = mat3_mul(ctx->world_tform, mat3_mul(m1, m2));
 
   glUniformMatrix3fv(ctx->tform_loc, 1, false, &m3.data[0][0]);
-  glDrawArrays(GL_TRIANGLE_FAN, 0, ctx->vbo_points);
-  
+
+  if(line)
+    glDrawArrays(GL_LINE_LOOP, 0, ctx->vbo_points);
+  else
+    glDrawArrays(GL_TRIANGLE_FAN, 0, ctx->vbo_points);
 }
 
 
@@ -769,13 +773,15 @@ void mainloop(context * ctx)
   float world_scale = 0.2;
   ctx->world_tform = mat3_mul(mat3_2d_rotation(rot), mat3_mul( mat3_2d_scale(world_scale,world_scale), mat3_2d_translation(-ctx->squares->pos[idx].x,-ctx->squares->pos[idx].y)));
   
-  glUniform4f(ctx->color_uniform_loc, 1,1,1,1);
+  glUniform4f(ctx->color_uniform_loc, 1,0.8,0.8,1);
+  glUniform4f(ctx->color2_uniform_loc, 0.8,0.6,0.6,1);
+  
   GLFWwindow * win = ctx->win;
   int f = glfwGetKey(win, GLFW_KEY_F);
   //int space = glfwGetKey(win, GLFW_KEY_SPACE);
   int enter = glfwGetKey(win, GLFW_KEY_ENTER);
   int r = glfwGetKey(win, GLFW_KEY_R);
-  glClearColor(0.01,0.01,0.04, 1);
+  glClearColor(0.0,0.0,0.0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
   
  
@@ -807,29 +813,45 @@ void mainloop(context * ctx)
   
   for(size_t i = 0 ; i < ctx->squares->count; i++){
     square_type type = ctx->squares->type[i+1];
+    vec4 color1, color2;
     if( type == SQUARE_LOSE){
-      glUniform4f(ctx->color_uniform_loc, 1,0,0,1);
+      color1 = vec4_new(1,0,0,1);
+      color2 = vec4_new(1,0.8,0.5,1);
     }else if(type == SQUARE_WIN){
-      glUniform4f(ctx->color_uniform_loc, 0,1,0,1);
+      color1 = vec4_new(0,1,0,1);
+      color2 = vec4_new(0.6, 1.0, 0.6, 1.0);
+  
     }else if(type == SQUARE_PLAYER){
       glUniform4f(ctx->color_uniform_loc, 0.5,0.5,1,1);
+      glUniform4f(ctx->color2_uniform_loc, 0.5,0.5,1,1);
       vec2 p = ctx->squares->pos[i+1];
       vec2 s = ctx->squares->size[i+1];
-      render_square(ctx, p,s);
+      render_square(ctx, p,s, false);
       var s2 = vec2_mul(s, vec2_new(0.15,0.4));
       vec2 p2 = vec2_add(p, s2);
       glUniform4f(ctx->color_uniform_loc, 0.0,0.0,0,1);
-
-      render_square(ctx, p2,s2);
+      glUniform4f(ctx->color2_uniform_loc, 0.0,0.0,0,1);
+ 
+      render_square(ctx, p2,s2, false);
       vec2 p3 = vec2_add(p2, vec2_new(s2.x * 3,0));
-      render_square(ctx, p3,s2);
+      render_square(ctx, p3,s2, false);
       
     }
     else{
-      glUniform4f(ctx->color_uniform_loc, 1,1,1,1);
+      color1 = vec4_new(1,1,1,1);
+      color2 = vec4_new(0.8, 0.8, 0.8, 1.0);
     }
-    if(type != SQUARE_PLAYER)
-      render_square(ctx, ctx->squares->pos[i+1],ctx->squares->size[i+1]);
+    if(type != SQUARE_PLAYER){
+      glUniform4f(ctx->color_uniform_loc, color1.x, color1.y,color1.z,color1.w);
+      
+      glUniform4f(ctx->color2_uniform_loc, color2.x, color2.y,color2.z,color2.w);
+      render_square(ctx, ctx->squares->pos[i+1],ctx->squares->size[i+1], false);
+      glUniform4f(ctx->color_uniform_loc, 0, 0, 0,1);
+      
+      glUniform4f(ctx->color2_uniform_loc, 0,0,0,1);
+      
+      render_square(ctx, ctx->squares->pos[i+1],ctx->squares->size[i+1], true);
+    }
   }
 
   int to_remove = 0;
@@ -842,7 +864,7 @@ void mainloop(context * ctx)
     
     var lifetime = particles->lifetime[i] * 5;
     glUniform4f(ctx->color_uniform_loc, 1,1,0,lifetime < 1 ? lifetime : 1);
-    render_square(ctx, particles->pos[i+1],vec2_new1(particles->size[i+1]));
+    render_square(ctx, particles->pos[i+1],vec2_new1(particles->size[i+1]), false);
     particles->pos[i] = vec2_add(particles->pos[i], vec2_scale(particles->dir[i], timestep));
     
     particles->lifetime[i] -= timestep;
